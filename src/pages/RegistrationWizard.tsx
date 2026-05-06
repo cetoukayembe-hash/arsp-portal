@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 import { Check, ChevronRight, ChevronLeft, Upload, FileText, Shield, Users, Building, CheckCircle2 } from 'lucide-react';
 
 const steps = [
@@ -34,8 +35,30 @@ export function RegistrationWizard() {
     return true;
   };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    const { error } = await supabase
+      .from('enterprises')
+      .insert([{
+        name: form.name,
+        email: form.email,
+        rccm: form.rccm,
+        id_national: form.idNational,
+        tax_number: form.taxNumber,
+        type: form.type,
+        sector: form.sector,
+        province: form.province,
+        city: form.city,
+        employees: parseInt(form.employees),
+        congolese_capital: form.congoleseCapital,
+        founded_year: form.foundedYear,
+        status: 'pending',
+      }]);
+
+    if (error) {
+      console.error('Error saving:', error);
+    } else {
+      setSubmitted(true);
+    }
   };
 
   if (submitted) {
