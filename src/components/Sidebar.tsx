@@ -11,41 +11,44 @@ const navGroups = [
   {
     phase: 'MVP',
     color: 'bg-blue-500',
+    roles: ['subcontractor', 'prime', 'admin'],
     items: [
-      { to: '/register', label: 'Inscription', icon: ClipboardList },
-      { to: '/digital-id', label: 'Carte Numérique', icon: CreditCard },
-      { to: '/enterprise-search', label: 'Registre Entreprises', icon: Search },
+      { to: '/register', label: 'Inscription', icon: ClipboardList, roles: ['subcontractor'] },
+      { to: '/digital-id', label: 'Carte Numérique', icon: CreditCard, roles: ['subcontractor'] },
+      { to: '/enterprise-search', label: 'Registre Entreprises', icon: Search, roles: ['subcontractor', 'prime', 'admin'] },
     ],
   },
   {
     phase: 'V2',
     color: 'bg-emerald-500',
+    roles: ['subcontractor', 'prime', 'admin'],
     items: [
-      { to: '/tenders', label: 'Appels d\'Offres', icon: Briefcase },
-      { to: '/compliance', label: 'Conformité', icon: ShieldCheck },
+      { to: '/tenders', label: 'Appels d\'Offres', icon: Briefcase, roles: ['subcontractor', 'prime'] },
+      { to: '/compliance', label: 'Conformité', icon: ShieldCheck, roles: ['subcontractor', 'admin'] },
     ],
   },
   {
     phase: 'V3',
     color: 'bg-violet-500',
+    roles: ['subcontractor', 'prime', 'admin'],
     items: [
-      { to: '/matching', label: 'Matching Intelligent', icon: Zap },
-      { to: '/messages', label: 'Messagerie', icon: MessageSquare },
-      { to: '/contracts', label: 'Contrats', icon: FileSignature },
-      { to: '/analytics', label: 'Analytics', icon: BarChart3 },
+      { to: '/matching', label: 'Matching Intelligent', icon: Zap, roles: ['subcontractor', 'prime'] },
+      { to: '/messages', label: 'Messagerie', icon: MessageSquare, roles: ['subcontractor', 'prime', 'admin'] },
+      { to: '/contracts', label: 'Contrats', icon: FileSignature, roles: ['subcontractor', 'prime', 'admin'] },
+      { to: '/analytics', label: 'Analytics', icon: BarChart3, roles: ['admin'] },
     ],
   },
   {
     phase: 'V4',
     color: 'bg-amber-500',
+    roles: ['subcontractor', 'prime', 'admin'],
     items: [
-      { to: '/payments', label: 'Paiements', icon: CreditCard },
-      { to: '/esignature', label: 'E-Signature', icon: FileSignature },
-      { to: '/disputes', label: 'Litiges', icon: Gavel },
+      { to: '/payments', label: 'Paiements', icon: CreditCard, roles: ['prime'] },
+      { to: '/esignature', label: 'E-Signature', icon: FileSignature, roles: ['subcontractor', 'prime'] },
+      { to: '/disputes', label: 'Litiges', icon: Gavel, roles: ['subcontractor', 'prime', 'admin'] },
     ],
   },
 ];
-
 export function Sidebar({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => void }) {
   const auth = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -86,8 +89,8 @@ export function Sidebar({ open, setOpen }: { open: boolean; setOpen: (v: boolean
               {group.items.map((item) => {
                 const Icon = item.icon;
                 const requiresAuth = item.to !== '/enterprise-search';
-                if (requiresAuth && !auth.isAuthenticated) return null;
-                if (item.to === '/analytics' && auth.userRole !== 'admin') return null;
+                if (!auth.isAuthenticated) return null;
+                if (!item.roles.includes(auth.userRole)) return null;
                 return (
                   <NavLink
                     key={item.to}
