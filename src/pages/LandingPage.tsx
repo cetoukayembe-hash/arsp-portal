@@ -79,7 +79,7 @@ export function LandingPage() {
 
       {/* Hero */}
       <section className="relative h-[600px] flex items-center justify-center overflow-hidden">
-        <img src="/hero-background.jpeg" alt="Kinshasa" className="absolute inset-0 w-full h-full object-cover" />
+        <img src="/photo-fatshi-2.jpeg" alt="Kinshasa" className="absolute inset-0 w-full h-full object-cover object-top" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a2540]/80 via-[#0a2540]/60 to-[#0a2540]/90" />
         <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto">
           <div className="flex justify-center mb-6">
