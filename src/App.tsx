@@ -15,6 +15,7 @@ import { Contracts } from './pages/Contracts';
 import { Payments } from './pages/Payments';
 import { ESignature } from './pages/ESignature';
 import { DisputeResolution } from './pages/DisputeResolution';
+import { Approvals } from './pages/Approvals';
 import { supabase } from './lib/supabase';
 
 export interface AuthContextType {
@@ -77,6 +78,7 @@ function AppRoutes() {
       <Route path="/payments" element={<ProtectedRoute allowedRoles={['prime', 'admin']}><Payments /></ProtectedRoute>} />
       <Route path="/esignature" element={<ProtectedRoute><ESignature /></ProtectedRoute>} />
       <Route path="/disputes" element={<ProtectedRoute><DisputeResolution /></ProtectedRoute>} />
+      <Route path="/approvals" element={<ProtectedRoute allowedRoles={['admin']}><Approvals /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><EnterpriseSearch /></ProtectedRoute>} />
     </Routes>
   );

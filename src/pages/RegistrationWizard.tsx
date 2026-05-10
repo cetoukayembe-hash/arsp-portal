@@ -27,7 +27,7 @@ export function RegistrationWizard() {
     congoleseCapital: 51,
     personnelCongolais: true,
     experience: [] as string[],
-    documents: { rccm: false, fiscal: false, cnss: false, identity: false },
+    documents: { rccm: null as File | null, fiscal: null as File | null, cnss: null as File | null, identity: null as File | null },
   });
 
   const update = (key: string, value: any) => setForm((f) => ({ ...f, [key]: value }));
@@ -36,12 +36,28 @@ export function RegistrationWizard() {
     if (step === 0) return form.email && form.password && form.password === form.confirmPassword;
     if (step === 1) return form.name && form.rccm && form.idNational && form.taxNumber && form.sector && form.province;
     if (step === 2) return form.congoleseCapital >= 51;
-    if (step === 3) return Object.values(form.documents).every(Boolean);
+    if (step === 3) return true;
     return true;
   };
 
+  async function uploadDoc(file: File, name: string): Promise<string> {
+    const fileName = 'documents/' + Date.now() + '_' + name + '_' + file.name;
+    const { data } = await supabase.storage.from('documents').upload(fileName, file);
+    if (data) {
+      const { data: urlData } = supabase.storage.from('documents').getPublicUrl(fileName);
+      return urlData.publicUrl;
+    }
+    return '';
+  }
+
   const handleSubmit = async () => {
     setLoading(true);
+    let docUrls = { rccm: '', fiscal: '', cnss: '', identity: '' };
+    if (form.documents.rccm) docUrls.rccm = await uploadDoc(form.documents.rccm, 'rccm');
+    if (form.documents.fiscal) docUrls.fiscal = await uploadDoc(form.documents.fiscal, 'fiscal');
+    if (form.documents.cnss) docUrls.cnss = await uploadDoc(form.documents.cnss, 'cnss');
+    if (form.documents.identity) docUrls.identity = await uploadDoc(form.documents.identity, 'identity');
+
     const { error } = await supabase.from('enterprises').insert([{
       name: form.name,
       email: form.email,
@@ -56,6 +72,10 @@ export function RegistrationWizard() {
       congolese_capital: form.congoleseCapital,
       founded_year: form.foundedYear,
       experience: form.experience,
+      doc_rccm: docUrls.rccm,
+      doc_fiscal: docUrls.fiscal,
+      doc_cnss: docUrls.cnss,
+      doc_identity: docUrls.identity,
       status: 'pending',
     }]);
     setLoading(false);
@@ -74,7 +94,7 @@ export function RegistrationWizard() {
             <CheckCircle2 className="w-10 h-10 text-emerald-600" />
           </div>
           <h2 className="text-2xl font-bold text-[#0a2540] mb-2">Inscription soumise avec succes</h2>
-          <p className="text-gray-600 mb-2">Votre demande est en cours de traitement par l'equipe ARSP.</p>
+          <p className="text-gray-600 mb-2">Votre demande est en cours de traitement par l equipe ARSP.</p>
           <div className="bg-[#F6F9FC] rounded-lg p-4 mb-6">
             <p className="text-sm text-gray-500">Numero de reference</p>
             <p className="text-xl font-bold text-[#0a2540]">ARSP-{Date.now().toString().slice(-6)}</p>
@@ -97,7 +117,7 @@ export function RegistrationWizard() {
       <div className="relative h-48 rounded-xl overflow-hidden mb-6">
         <img src="/construction-sector.jpeg" alt="Construction" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-[#0a2540]/60 flex items-center px-8">
-          <h2 className="text-3xl font-bold text-white">Enregistrement de l'entreprise</h2>
+          <h2 className="text-3xl font-bold text-white">Enregistrement de l entreprise</h2>
         </div>
       </div>
 
@@ -129,7 +149,7 @@ export function RegistrationWizard() {
         {/* Step 0 - Account */}
         {step === 0 && (
           <div className="space-y-4 animate-fade-in">
-            <h3 className="text-lg font-semibold text-[#0a2540] mb-4">1. Compte et type d'entreprise</h3>
+            <h3 className="text-lg font-semibold text-[#0a2540] mb-4">1. Compte et type d entreprise</h3>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input type="email" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="contact@entreprise.cd" />
@@ -146,7 +166,7 @@ export function RegistrationWizard() {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type d'entreprise</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Type d entreprise</label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {['Personne Physique', 'Personne Morale', 'Entreprenant', 'Formation Medicale', 'Autre'].map((t) => (
                   <button key={t} onClick={() => update('type', t)} className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${form.type === t ? 'border-[#007FFF] bg-blue-50 text-[#0a2540]' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
@@ -161,10 +181,10 @@ export function RegistrationWizard() {
         {/* Step 1 - Enterprise Details */}
         {step === 1 && (
           <div className="space-y-4 animate-fade-in">
-            <h3 className="text-lg font-semibold text-[#0a2540] mb-4">2. Details de l'entreprise</h3>
+            <h3 className="text-lg font-semibold text-[#0a2540] mb-4">2. Details de l entreprise</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'entreprise</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l entreprise</label>
                 <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="Ex: Batiments du Congo SARL" />
               </div>
               <div>
@@ -176,7 +196,7 @@ export function RegistrationWizard() {
                 <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" value={form.idNational} onChange={(e) => update('idNational', e.target.value)} placeholder="IDNAT-XXX-XXX-XXX" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Numero d'Impot (NIF)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Numero d Impot (NIF)</label>
                 <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" value={form.taxNumber} onChange={(e) => update('taxNumber', e.target.value)} placeholder="NIF-AXXXXXXXXXB" />
               </div>
             </div>
@@ -206,12 +226,12 @@ export function RegistrationWizard() {
                 <input type="number" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" value={form.foundedYear} onChange={(e) => update('foundedYear', e.target.value)} placeholder="2018" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre d'employes</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre d employes</label>
                 <input type="number" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" value={form.employees} onChange={(e) => update('employees', e.target.value)} placeholder="25" />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Secteurs d'experience passee (selectionnez tous)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Secteurs d experience passee</label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {sectors.map((s) => (
                   <button
@@ -248,7 +268,7 @@ export function RegistrationWizard() {
                 <span className="text-lg font-bold text-[#0a2540] w-16 text-right">{form.congoleseCapital}%</span>
               </div>
               {form.congoleseCapital < 51 && (
-                <p className="text-xs text-red-500 mt-1">Le capital congolais doit etre d'au moins 51% pour l'agrement ARSP.</p>
+                <p className="text-xs text-red-500 mt-1">Le capital congolais doit etre d au moins 51% pour l agrement ARSP.</p>
               )}
               {form.congoleseCapital >= 51 && (
                 <p className="text-xs text-emerald-600 mt-1">Critere de capital congolais satisfait.</p>
@@ -257,19 +277,6 @@ export function RegistrationWizard() {
             <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
               <input type="checkbox" id="personnelCongolais" checked={form.personnelCongolais} onChange={(e) => update('personnelCongolais', e.target.checked)} className="w-4 h-4 accent-[#007FFF]" />
               <label htmlFor="personnelCongolais" className="text-sm text-gray-700">Majorite du personnel est de nationalite congolaise</label>
-            </div>
-            <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="text-sm font-semibold text-[#0a2540] mb-3">Personnel cle</h4>
-              <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-2 text-xs text-gray-500 font-medium">
-                  <span>Nom</span><span>Fonction</span><span>Nationalite</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <input className="px-2 py-1.5 border border-gray-200 rounded text-sm" placeholder="Jean Kabongo" defaultValue="Jean Kabongo" />
-                  <input className="px-2 py-1.5 border border-gray-200 rounded text-sm" placeholder="DG" defaultValue="Directeur General" />
-                  <input className="px-2 py-1.5 border border-gray-200 rounded text-sm" placeholder="Congolaise" defaultValue="Congolaise" />
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -280,26 +287,34 @@ export function RegistrationWizard() {
             <h3 className="text-lg font-semibold text-[#0a2540] mb-4">4. Documents requis</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
-                { key: 'rccm', label: 'RCCM (Registre de Commerce)', icon: FileText },
-                { key: 'fiscal', label: 'Attestation Fiscale', icon: FileText },
-                { key: 'cnss', label: 'Attestation CNSS', icon: FileText },
-                { key: 'identity', label: "Piece d'identite du representant", icon: FileText },
+                { key: 'rccm', label: 'RCCM (Registre de Commerce)' },
+                { key: 'fiscal', label: 'Attestation Fiscale' },
+                { key: 'cnss', label: 'Attestation CNSS' },
+                { key: 'identity', label: "Piece d identite du representant" },
               ].map((doc) => {
                 const uploaded = (form.documents as any)[doc.key];
                 return (
-                  <div
-                    key={doc.key}
-                    onClick={() => update('documents', { ...form.documents, [doc.key]: !uploaded })}
-                    className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all hover:shadow-sm ${uploaded ? 'border-emerald-400 bg-emerald-50' : 'border-gray-300 hover:border-[#007FFF]'}`}
-                  >
+                  <div key={doc.key} className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${uploaded ? 'border-emerald-400 bg-emerald-50' : 'border-gray-300 hover:border-[#007FFF]'}`}>
                     {uploaded ? (
                       <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
                     ) : (
                       <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                     )}
-                    <p className="text-sm font-medium text-[#0a2540]">{doc.label}</p>
-                    <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG (max 5MB)</p>
-                    {uploaded && <p className="text-xs text-emerald-600 mt-1">Uploade avec succes</p>}
+                    <p className="text-sm font-medium text-[#0a2540] mb-2">{doc.label}</p>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="hidden"
+                      id={`doc-${doc.key}`}
+                      onChange={(e) => {
+                        const file = e.target.files ? e.target.files[0] : null;
+                        update('documents', { ...form.documents, [doc.key]: file });
+                      }}
+                    />
+                    <label htmlFor={`doc-${doc.key}`} className="cursor-pointer text-xs text-[#007FFF] hover:underline">
+                      {uploaded ? uploaded.name : 'Cliquer pour uploader'}
+                    </label>
+                    {uploaded && <p className="text-xs text-emerald-600 mt-1">Fichier selectionne</p>}
                   </div>
                 );
               })}
@@ -373,7 +388,7 @@ export function RegistrationWizard() {
               disabled={loading}
               className="flex items-center gap-2 px-6 py-2 bg-[#007FFF] text-white rounded-lg text-sm font-medium hover:bg-[#0066CC] transition-colors disabled:opacity-40"
             >
-              {loading ? 'Envoi en cours...' : "Soumettre l'inscription"}
+              {loading ? 'Envoi en cours...' : "Soumettre l inscription"}
               <Check className="w-4 h-4" />
             </button>
           )}
