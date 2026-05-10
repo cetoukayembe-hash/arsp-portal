@@ -13,8 +13,8 @@ const navGroups = [
     color: 'bg-blue-500',
     roles: ['subcontractor', 'prime', 'admin'],
     items: [
-      { to: '/register', label: 'Inscription', icon: ClipboardList, roles: ['subcontractor'] },
-      { to: '/digital-id', label: 'Carte Numérique', icon: CreditCard, roles: ['subcontractor'] },
+      { to: '/register', label: 'Inscription', icon: ClipboardList, roles: ['subcontractor', 'prime'] },
+      { to: '/digital-id', label: 'Carte Numerique', icon: CreditCard, roles: ['subcontractor', 'prime'] },
       { to: '/enterprise-search', label: 'Registre Entreprises', icon: Search, roles: ['subcontractor', 'prime', 'admin'] },
     ],
   },
@@ -43,7 +43,7 @@ const navGroups = [
     color: 'bg-amber-500',
     roles: ['subcontractor', 'prime', 'admin'],
     items: [
-      { to: '/payments', label: 'Paiements', icon: CreditCard, roles: ['prime'] },
+      { to: '/payments', label: 'Paiements', icon: CreditCard, roles: ['prime', 'admin'] },
       { to: '/esignature', label: 'E-Signature', icon: FileSignature, roles: ['subcontractor', 'prime'] },
       { to: '/disputes', label: 'Litiges', icon: Gavel, roles: ['subcontractor', 'prime', 'admin'] },
     ],

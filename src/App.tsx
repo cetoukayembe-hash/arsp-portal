@@ -1,4 +1,4 @@
-import { useState, createContext, useContext, type ReactNode } from 'react';
+import { useState, useEffect, createContext, useContext, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -15,10 +15,13 @@ import { Contracts } from './pages/Contracts';
 import { Payments } from './pages/Payments';
 import { ESignature } from './pages/ESignature';
 import { DisputeResolution } from './pages/DisputeResolution';
+import { supabase } from './lib/supabase';
 
 export interface AuthContextType {
   isAuthenticated: boolean;
   userRole: 'subcontractor' | 'prime' | 'admin';
+  userEmail: string;
+  userId: string;
   login: (role: 'subcontractor' | 'prime' | 'admin') => void;
   logout: () => void;
 }
@@ -71,7 +74,7 @@ function AppRoutes() {
       <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin']}><Analytics /></ProtectedRoute>} />
       <Route path="/contracts" element={<ProtectedRoute><Contracts /></ProtectedRoute>} />
-      <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
+      <Route path="/payments" element={<ProtectedRoute allowedRoles={['prime', 'admin']}><Payments /></ProtectedRoute>} />
       <Route path="/esignature" element={<ProtectedRoute><ESignature /></ProtectedRoute>} />
       <Route path="/disputes" element={<ProtectedRoute><DisputeResolution /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><EnterpriseSearch /></ProtectedRoute>} />
@@ -82,19 +85,73 @@ function AppRoutes() {
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<'subcontractor' | 'prime' | 'admin'>('subcontractor');
+  const [userEmail, setUserEmail] = useState('');
+  const [userId, setUserId] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  async function loadUserProfile(userId: string, email: string) {
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+    if (data) {
+      setUserRole(data.role as 'subcontractor' | 'prime' | 'admin');
+    }
+    setUserEmail(email);
+    setUserId(userId);
+    setIsAuthenticated(true);
+  }
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        loadUserProfile(session.user.id, session.user.email || '');
+      }
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        loadUserProfile(session.user.id, session.user.email || '');
+      } else {
+        setIsAuthenticated(false);
+        setUserEmail('');
+        setUserId('');
+        setUserRole('subcontractor');
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const login = (role: 'subcontractor' | 'prime' | 'admin') => {
     setUserRole(role);
     setIsAuthenticated(true);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setIsAuthenticated(false);
+    setUserEmail('');
+    setUserId('');
     setUserRole('subcontractor');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F6F9FC] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#007FFF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, userRole, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, userRole, userEmail, userId, login, logout }}>
       <BrowserRouter>
         <AppRoutes />
       </BrowserRouter>

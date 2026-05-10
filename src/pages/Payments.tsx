@@ -1,240 +1,282 @@
-import { useState } from 'react';
-import { CreditCard, Building2, CheckCircle2, Download, Smartphone, X } from 'lucide-react';
-import { payments } from '@/data/mockData';
+import { useState, useEffect } from 'react';
+import { CreditCard, Plus, X, Download, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/App';
 
 export function Payments() {
-  const [activeTab, setActiveTab] = useState<'outstanding' | 'history' | 'methods'>('outstanding');
-  const [showPayModal, setShowPayModal] = useState<string | null>(null);
-  const [payMethod, setPayMethod] = useState<'mobile' | 'bank' | 'card'>('mobile');
+  const auth = useAuth();
+  const [payments, setPayments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showPay, setShowPay] = useState<any | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [payMethod, setPayMethod] = useState<'bank' | 'card'>('bank');
   const [paySuccess, setPaySuccess] = useState(false);
+  const [newPayment, setNewPayment] = useState({
+    description: '', amount: '', due_date: '', payer_name: '', payer_email: '',
+  });
 
-  const outstanding = payments.filter((p) => p.status !== 'paid');
-  const history = payments.filter((p) => p.status === 'paid');
+  useEffect(() => { fetchPayments(); }, []);
 
-  const handlePay = () => {
-    setPaySuccess(true);
-    setTimeout(() => {
-      setPaySuccess(false);
-      setShowPayModal(null);
-    }, 2000);
+  async function fetchPayments() {
+    setLoading(true);
+    const { data } = await supabase
+      .from('payments')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (data) setPayments(data);
+    setLoading(false);
+  }
+
+  async function handleCreatePayment() {
+    const { error } = await supabase.from('payments').insert([{
+      reference: 'PAY-' + Date.now(),
+      description: newPayment.description,
+      amount: parseFloat(newPayment.amount),
+      currency: 'USD',
+      status: 'pending',
+      payer_name: newPayment.payer_name,
+      payer_email: newPayment.payer_email,
+      due_date: newPayment.due_date,
+    }]);
+    if (!error) {
+      setShowNew(false);
+      setNewPayment({ description: '', amount: '', due_date: '', payer_name: '', payer_email: '' });
+      fetchPayments();
+    }
+  }
+
+  async function handlePay(payment: any) {
+    const receiptNumber = 'REC-' + Date.now();
+    const { error } = await supabase
+      .from('payments')
+      .update({
+        status: 'paid',
+        method: payMethod,
+        paid_date: new Date().toISOString().split('T')[0],
+        receipt_number: receiptNumber,
+      })
+      .eq('id', payment.id);
+    if (!error) {
+      setPaySuccess(true);
+      setTimeout(() => {
+        setShowPay(null);
+        setPaySuccess(false);
+        fetchPayments();
+      }, 2000);
+    }
+  }
+
+  const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+    pending: { label: 'En attente', color: 'bg-amber-100 text-amber-700', icon: Clock },
+    paid: { label: 'Paye', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2 },
+    overdue: { label: 'En retard', color: 'bg-red-100 text-red-700', icon: AlertTriangle },
   };
 
-  const statusBadge = (status: string) => {
-    if (status === 'paid') return <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold">Payé</span>;
-    if (status === 'overdue') return <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-[10px] font-bold">En retard</span>;
-    return <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[10px] font-bold">En attente</span>;
-  };
+  const totalPending = payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
+  const totalPaid = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-[#0a2540] mb-6">Paiements</h2>
-
-      <div className="flex gap-2 mb-6">
-        {(['outstanding', 'history', 'methods'] as const).map((tab) => (
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-[#0a2540]">
+          {auth.userRole === 'admin' ? 'Gestion des Paiements' : 'Mes Paiements'}
+        </h2>
+        {auth.userRole === 'admin' && (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === tab ? 'bg-[#0a2540] text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
-            }`}
+            onClick={() => setShowNew(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-[#0a2540] text-white rounded-lg text-sm font-medium hover:bg-[#0d2f4f]"
           >
-            {tab === 'outstanding' ? 'À payer' : tab === 'history' ? 'Historique' : 'Méthodes'}
+            <Plus className="w-4 h-4" />
+            Nouvelle facture
           </button>
-        ))}
+        )}
       </div>
 
-      {activeTab === 'outstanding' && (
-        <div className="bg-white rounded-xl card-shadow overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-[#F6F9FC]">
-              <tr>
-                <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Type</th>
-                <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Montant (CDF)</th>
-                <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Montant (USD)</th>
-                <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Échéance</th>
-                <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Statut</th>
-                <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {outstanding.map((p) => (
-                <tr key={p.id}>
-                  <td className="px-4 py-3 font-medium text-[#0a2540]">{p.type}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.amountCDF.toLocaleString()} CDF</td>
-                  <td className="px-4 py-3 text-gray-600">{p.amountUSD} USD</td>
-                  <td className="px-4 py-3 text-gray-600">{p.dueDate}</td>
-                  <td className="px-4 py-3">{statusBadge(p.status)}</td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => setShowPayModal(p.id)}
-                      className="px-3 py-1.5 bg-[#007FFF] text-white rounded-lg text-xs font-medium hover:bg-[#0066CC] transition-colors"
-                    >
-                      Payer
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-xl p-5 card-shadow">
+          <div className="text-sm text-gray-500 mb-1">Total en attente</div>
+          <div className="text-2xl font-bold text-amber-600">${totalPending.toLocaleString()}</div>
+          <div className="text-xs text-gray-400 mt-1">{payments.filter(p => p.status === 'pending').length} facture(s)</div>
         </div>
-      )}
-
-      {activeTab === 'history' && (
-        <div className="bg-white rounded-xl card-shadow overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-[#F6F9FC]">
-              <tr>
-                <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Type</th>
-                <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Montant</th>
-                <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Date</th>
-                <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Méthode</th>
-                <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Reçu</th>
-                <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {history.map((p) => (
-                <tr key={p.id}>
-                  <td className="px-4 py-3 font-medium text-[#0a2540]">{p.type}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.amountCDF.toLocaleString()} CDF</td>
-                  <td className="px-4 py-3 text-gray-600">{p.paidDate}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.method}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.receiptNumber}</td>
-                  <td className="px-4 py-3">
-                    <button className="flex items-center gap-1 text-xs text-[#007FFF] hover:underline">
-                      <Download className="w-3 h-3" /> Reçu
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="bg-white rounded-xl p-5 card-shadow">
+          <div className="text-sm text-gray-500 mb-1">Total paye</div>
+          <div className="text-2xl font-bold text-emerald-600">${totalPaid.toLocaleString()}</div>
+          <div className="text-xs text-gray-400 mt-1">{payments.filter(p => p.status === 'paid').length} paiement(s)</div>
         </div>
-      )}
-
-      {activeTab === 'methods' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl p-5 card-shadow">
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4">
-              <Smartphone className="w-6 h-6 text-orange-600" />
-            </div>
-            <h3 className="font-semibold text-[#0a2540] mb-1">Mobile Money</h3>
-            <p className="text-sm text-gray-600 mb-4">Orange Money, M-Pesa, Airtel Money</p>
-            <button className="w-full py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-              Configurer
-            </button>
-          </div>
-          <div className="bg-white rounded-xl p-5 card-shadow">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-              <Building2 className="w-6 h-6 text-blue-600" />
-            </div>
-            <h3 className="font-semibold text-[#0a2540] mb-1">Virement bancaire</h3>
-            <p className="text-sm text-gray-600 mb-4">Compte ARSP : RAWBANK 000-123456-78</p>
-            <button className="w-full py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-              Voir détails
-            </button>
-          </div>
-          <div className="bg-white rounded-xl p-5 card-shadow">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-              <CreditCard className="w-6 h-6 text-purple-600" />
-            </div>
-            <h3 className="font-semibold text-[#0a2540] mb-1">Carte bancaire</h3>
-            <p className="text-sm text-gray-600 mb-4">Visa, Mastercard (simulation)</p>
-            <button className="w-full py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-              Configurer
-            </button>
-          </div>
+        <div className="bg-white rounded-xl p-5 card-shadow">
+          <div className="text-sm text-gray-500 mb-1">Total factures</div>
+          <div className="text-2xl font-bold text-[#0a2540]">${(totalPending + totalPaid).toLocaleString()}</div>
+          <div className="text-xs text-gray-400 mt-1">{payments.length} facture(s) au total</div>
         </div>
-      )}
+      </div>
 
-      {/* Payment Modal */}
-      {showPayModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowPayModal(null)}>
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl animate-fade-in" onClick={(e) => e.stopPropagation()}>
-            {paySuccess ? (
-              <div className="p-8 text-center">
-                <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-600" />
-                </div>
-                <h3 className="text-xl font-bold text-[#0a2540] mb-2">Paiement confirmé</h3>
-                <p className="text-gray-600 mb-4">Votre transaction a été traitée avec succès.</p>
-                <div className="bg-[#F6F9FC] rounded-lg p-4">
-                  <p className="text-xs text-gray-500">Numéro de reçu</p>
-                  <p className="text-lg font-bold text-[#0a2540]">REC-2026-089</p>
+      {/* Payments List */}
+      {loading ? (
+        <div className="text-center py-12 text-gray-500">Chargement...</div>
+      ) : payments.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-xl card-shadow">
+          <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 font-medium">Aucun paiement disponible</p>
+          {auth.userRole === 'admin' && (
+            <button onClick={() => setShowNew(true)} className="mt-3 text-sm text-[#007FFF] hover:underline">
+              Creer une premiere facture
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {payments.map((p) => {
+            const status = statusConfig[p.status] || statusConfig.pending;
+            const Icon = status.icon;
+            return (
+              <div key={p.id} className="bg-white rounded-xl p-5 card-shadow hover:card-shadow-hover transition-all">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-lg font-semibold text-[#0a2540]">{p.description}</h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${status.color}`}>
+                        {status.label}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-2">{p.reference}</p>
+                    <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                      <span>💰 ${p.amount?.toLocaleString()} {p.currency}</span>
+                      {p.due_date && <span>📅 Echeance: {p.due_date}</span>}
+                      {p.payer_name && <span>👤 {p.payer_name}</span>}
+                      {p.method && <span>💳 {p.method === 'bank' ? 'Virement bancaire' : 'Carte'}</span>}
+                      {p.paid_date && <span>✅ Paye le: {p.paid_date}</span>}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <Icon className="w-5 h-5 text-gray-400" />
+                    {p.status === 'pending' && auth.userRole === 'prime' && (
+                      <button
+                        onClick={() => setShowPay(p)}
+                        className="px-3 py-1.5 bg-[#007FFF] text-white rounded-lg text-xs font-medium hover:bg-[#0066CC]"
+                      >
+                        Payer
+                      </button>
+                    )}
+                    {p.status === 'paid' && p.receipt_number && (
+                      <button className="flex items-center gap-1 text-xs text-[#007FFF] hover:underline">
+                        <Download className="w-3 h-3" />
+                        Recu
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            ) : (
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-[#0a2540]">Effectuer le paiement</h3>
-                  <button onClick={() => setShowPayModal(null)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5 text-gray-500" /></button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* New Payment Modal - Admin only */}
+      {showNew && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowNew(false)}>
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-[#0a2540]">Nouvelle facture</h3>
+                <button onClick={() => setShowNew(false)}><X className="w-5 h-5 text-gray-500" /></button>
+              </div>
+              <div className="space-y-3">
+                <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Description *" value={newPayment.description} onChange={(e) => setNewPayment({...newPayment, description: e.target.value})} />
+                <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Nom du payeur" value={newPayment.payer_name} onChange={(e) => setNewPayment({...newPayment, payer_name: e.target.value})} />
+                <input type="email" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Email du payeur" value={newPayment.payer_email} onChange={(e) => setNewPayment({...newPayment, payer_email: e.target.value})} />
+                <input type="number" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Montant (USD) *" value={newPayment.amount} onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})} />
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Date d'echeance</label>
+                  <input type="date" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" value={newPayment.due_date} onChange={(e) => setNewPayment({...newPayment, due_date: e.target.value})} />
                 </div>
-                {(() => {
-                  const p = payments.find((x) => x.id === showPayModal);
-                  if (!p) return null;
-                  return (
-                    <div className="space-y-4">
-                      <div className="bg-[#F6F9FC] rounded-lg p-4">
-                        <p className="text-xs text-gray-500">À payer</p>
-                        <p className="text-2xl font-bold text-[#0a2540]">{p.amountCDF.toLocaleString()} CDF</p>
-                        <p className="text-sm text-gray-500">≈ {p.amountUSD} USD</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Méthode de paiement</label>
-                        <div className="grid grid-cols-3 gap-2">
-                          <button onClick={() => setPayMethod('mobile')} className={`p-3 rounded-lg border-2 text-center transition-all ${payMethod === 'mobile' ? 'border-[#007FFF] bg-blue-50' : 'border-gray-200'}`}>
-                            <Smartphone className="w-5 h-5 mx-auto mb-1 text-orange-500" />
-                            <span className="text-xs">Mobile</span>
-                          </button>
-                          <button onClick={() => setPayMethod('bank')} className={`p-3 rounded-lg border-2 text-center transition-all ${payMethod === 'bank' ? 'border-[#007FFF] bg-blue-50' : 'border-gray-200'}`}>
-                            <Building2 className="w-5 h-5 mx-auto mb-1 text-blue-500" />
-                            <span className="text-xs">Banque</span>
-                          </button>
-                          <button onClick={() => setPayMethod('card')} className={`p-3 rounded-lg border-2 text-center transition-all ${payMethod === 'card' ? 'border-[#007FFF] bg-blue-50' : 'border-gray-200'}`}>
-                            <CreditCard className="w-5 h-5 mx-auto mb-1 text-purple-500" />
-                            <span className="text-xs">Carte</span>
-                          </button>
-                        </div>
-                      </div>
-                      {payMethod === 'mobile' && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Numéro Mobile Money</label>
-                          <input type="tel" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="+243 82 ..." defaultValue="+243 824 940 440" />
-                        </div>
-                      )}
-                      {payMethod === 'bank' && (
-                        <div className="bg-gray-50 rounded-lg p-3 text-sm">
-                          <p className="font-medium text-[#0a2540] mb-1">Compte ARSP – RAWBANK</p>
-                          <p className="text-gray-600">IBAN: CD12 0001 2345 6789 0123</p>
-                          <p className="text-gray-600">SWIFT: RAWBCDKI</p>
-                          <p className="text-xs text-gray-400 mt-2">Veuillez télécharger le justificatif de virement après paiement.</p>
-                        </div>
-                      )}
-                      {payMethod === 'card' && (
-                        <div className="space-y-3">
-                          <input type="text" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="Numéro de carte" defaultValue="4111 1111 1111 1111" />
-                          <div className="grid grid-cols-2 gap-3">
-                            <input type="text" className="px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="MM/AA" defaultValue="12/27" />
-                            <input type="text" className="px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="CVV" defaultValue="123" />
-                          </div>
-                        </div>
-                      )}
-                      <div className="border-t border-gray-100 pt-3 space-y-1 text-sm">
-                        <div className="flex justify-between"><span className="text-gray-500">Sous-total</span><span className="font-medium">{p.amountCDF.toLocaleString()} CDF</span></div>
-                        <div className="flex justify-between"><span className="text-gray-500">TVA (16%)</span><span className="font-medium">{Math.round(p.amountCDF * 0.16).toLocaleString()} CDF</span></div>
-                        <div className="flex justify-between text-[#0a2540] font-bold"><span>Total</span><span>{Math.round(p.amountCDF * 1.16).toLocaleString()} CDF</span></div>
-                      </div>
+                <button onClick={handleCreatePayment} className="w-full py-2.5 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC]">
+                  Creer la facture
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pay Modal - Prime only */}
+      {showPay && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowPay(null)}>
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-[#0a2540]">Effectuer un paiement</h3>
+                <button onClick={() => setShowPay(null)}><X className="w-5 h-5 text-gray-500" /></button>
+              </div>
+              {paySuccess ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                  </div>
+                  <h4 className="text-lg font-bold text-[#0a2540] mb-2">Paiement effectue!</h4>
+                  <p className="text-gray-500 text-sm">Votre recu sera disponible dans quelques instants.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-[#F6F9FC] rounded-lg p-4">
+                    <p className="text-sm text-gray-500">Montant a payer</p>
+                    <p className="text-2xl font-bold text-[#0a2540]">${showPay.amount?.toLocaleString()} USD</p>
+                    <p className="text-xs text-gray-400">{showPay.description}</p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Methode de paiement</label>
+                    <div className="grid grid-cols-2 gap-3">
                       <button
-                        onClick={handlePay}
-                        className="w-full py-2.5 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC] transition-colors"
+                        onClick={() => setPayMethod('bank')}
+                        className={`p-3 rounded-xl border-2 text-center transition-all ${payMethod === 'bank' ? 'border-[#007FFF] bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
                       >
-                        Confirmer le paiement
+                        <div className="text-xl mb-1">🏦</div>
+                        <div className="text-sm font-medium text-[#0a2540]">Virement bancaire</div>
+                        <div className="text-xs text-gray-400">2-3 jours ouvrables</div>
+                      </button>
+                      <button
+                        onClick={() => setPayMethod('card')}
+                        className={`p-3 rounded-xl border-2 text-center transition-all ${payMethod === 'card' ? 'border-[#007FFF] bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+                      >
+                        <div className="text-xl mb-1">💳</div>
+                        <div className="text-sm font-medium text-[#0a2540]">Carte bancaire</div>
+                        <div className="text-xs text-gray-400">Immediat</div>
                       </button>
                     </div>
-                  );
-                })()}
-              </div>
-            )}
+                  </div>
+
+                  {payMethod === 'bank' && (
+                    <div className="bg-[#F6F9FC] rounded-lg p-4 text-sm">
+                      <p className="font-medium text-[#0a2540] mb-2">Coordonnees bancaires ARSP</p>
+                      <div className="space-y-1 text-xs text-gray-600">
+                        <div className="flex justify-between"><span>Banque:</span><span className="font-medium">Rawbank RDC</span></div>
+                        <div className="flex justify-between"><span>Compte:</span><span className="font-medium">0001-2345-6789</span></div>
+                        <div className="flex justify-between"><span>Reference:</span><span className="font-medium">{showPay.reference}</span></div>
+                      </div>
+                    </div>
+                  )}
+
+                  {payMethod === 'card' && (
+                    <div className="space-y-3">
+                      <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Numero de carte" maxLength={19} />
+                      <div className="grid grid-cols-2 gap-3">
+                        <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="MM/AA" maxLength={5} />
+                        <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="CVV" maxLength={3} />
+                      </div>
+                      <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Nom sur la carte" />
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => handlePay(showPay)}
+                    className="w-full py-2.5 bg-[#0a2540] text-white rounded-lg font-semibold hover:bg-[#0d2f4f]"
+                  >
+                    Confirmer le paiement de ${showPay.amount?.toLocaleString()} USD
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
