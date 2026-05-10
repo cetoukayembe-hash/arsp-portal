@@ -19,10 +19,16 @@ export function Payments() {
 
   async function fetchPayments() {
     setLoading(true);
-    const { data } = await supabase
+    let query = supabase
       .from('payments')
       .select('*')
       .order('created_at', { ascending: false });
+
+    if (auth.userRole === 'prime') {
+      query = query.eq('payer_email', auth.userEmail);
+    }
+
+    const { data } = await query;
     if (data) setPayments(data);
     setLoading(false);
   }
@@ -117,7 +123,9 @@ export function Payments() {
       ) : payments.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl card-shadow">
           <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">Aucun paiement disponible</p>
+          <p className="text-gray-500 font-medium">
+            {auth.userRole === 'prime' ? 'Aucune facture a votre nom' : 'Aucun paiement disponible'}
+          </p>
           {auth.userRole === 'admin' && (
             <button onClick={() => setShowNew(true)} className="mt-3 text-sm text-[#007FFF] hover:underline">
               Creer une premiere facture
@@ -184,10 +192,10 @@ export function Payments() {
               <div className="space-y-3">
                 <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Description *" value={newPayment.description} onChange={(e) => setNewPayment({...newPayment, description: e.target.value})} />
                 <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Nom du payeur" value={newPayment.payer_name} onChange={(e) => setNewPayment({...newPayment, payer_name: e.target.value})} />
-                <input type="email" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Email du payeur" value={newPayment.payer_email} onChange={(e) => setNewPayment({...newPayment, payer_email: e.target.value})} />
+                <input type="email" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Email du payeur *" value={newPayment.payer_email} onChange={(e) => setNewPayment({...newPayment, payer_email: e.target.value})} />
                 <input type="number" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Montant (USD) *" value={newPayment.amount} onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})} />
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Date d'echeance</label>
+                  <label className="text-xs text-gray-500 mb-1 block">Date d echeance</label>
                   <input type="date" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" value={newPayment.due_date} onChange={(e) => setNewPayment({...newPayment, due_date: e.target.value})} />
                 </div>
                 <button onClick={handleCreatePayment} className="w-full py-2.5 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC]">
@@ -223,7 +231,6 @@ export function Payments() {
                     <p className="text-2xl font-bold text-[#0a2540]">${showPay.amount?.toLocaleString()} USD</p>
                     <p className="text-xs text-gray-400">{showPay.description}</p>
                   </div>
-
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">Methode de paiement</label>
                     <div className="grid grid-cols-2 gap-3">
@@ -245,7 +252,6 @@ export function Payments() {
                       </button>
                     </div>
                   </div>
-
                   {payMethod === 'bank' && (
                     <div className="bg-[#F6F9FC] rounded-lg p-4 text-sm">
                       <p className="font-medium text-[#0a2540] mb-2">Coordonnees bancaires ARSP</p>
@@ -256,7 +262,6 @@ export function Payments() {
                       </div>
                     </div>
                   )}
-
                   {payMethod === 'card' && (
                     <div className="space-y-3">
                       <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Numero de carte" maxLength={19} />
@@ -267,7 +272,6 @@ export function Payments() {
                       <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Nom sur la carte" />
                     </div>
                   )}
-
                   <button
                     onClick={() => handlePay(showPay)}
                     className="w-full py-2.5 bg-[#0a2540] text-white rounded-lg font-semibold hover:bg-[#0d2f4f]"
