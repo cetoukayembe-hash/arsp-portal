@@ -41,10 +41,10 @@ export function RegistrationWizard() {
   };
 
   async function uploadDoc(file: File, name: string): Promise<string> {
-    const fileName = 'documents/' + Date.now() + '_' + name + '_' + file.name;
-    const { data } = await supabase.storage.from('documents').upload(fileName, file);
+    const fileName = Date.now() + '_' + name + '_' + file.name;
+    const { data } = await supabase.storage.from('Documents').upload(fileName, file);
     if (data) {
-      const { data: urlData } = supabase.storage.from('documents').getPublicUrl(fileName);
+      const { data: urlData } = supabase.storage.from('Documents').getPublicUrl(fileName);
       return urlData.publicUrl;
     }
     return '';
