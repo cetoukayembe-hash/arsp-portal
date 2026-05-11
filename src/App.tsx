@@ -18,6 +18,7 @@ import { DisputeResolution } from './pages/DisputeResolution';
 import { Approvals } from './pages/Approvals';
 import { supabase } from './lib/supabase';
 import { Declarations } from './pages/Declarations';
+import { Dashboard } from './pages/Dashboard';
 
 export interface AuthContextType {
   isAuthenticated: boolean;
@@ -80,7 +81,7 @@ function AppRoutes() {
       <Route path="/esignature" element={<ProtectedRoute><ESignature /></ProtectedRoute>} />
       <Route path="/disputes" element={<ProtectedRoute><DisputeResolution /></ProtectedRoute>} />
       <Route path="/approvals" element={<ProtectedRoute allowedRoles={['admin']}><Approvals /></ProtectedRoute>} />
-      <Route path="/dashboard" element={<ProtectedRoute><EnterpriseSearch /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/declarations" element={<ProtectedRoute allowedRoles={['prime', 'admin']}><Declarations /></ProtectedRoute>} />
     </Routes>
   );

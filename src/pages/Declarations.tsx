@@ -108,9 +108,18 @@ export function Declarations() {
     rejected: { label: "Rejetee", color: "bg-red-100 text-red-700", icon: AlertTriangle },
   };
 
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
   const currentMonth = months[new Date().getMonth()];
   const currentYear = new Date().getFullYear();
   const hasCurrentDeclaration = declarations.some(d => d.month === currentMonth && d.year === currentYear);
+
+  const filteredDeclarations = declarations.filter(d => {
+    const matchesStatus = statusFilter === "all" || d.status === statusFilter;
+    const matchesSearch = !searchQuery || d.prime_name.toLowerCase().includes(searchQuery.toLowerCase()) || d.prime_email.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
 
   return (
     <div>
@@ -125,6 +134,38 @@ export function Declarations() {
           </button>
         )}
       </div>
+
+      {auth.userRole === "admin" && (
+        <div className="bg-white rounded-xl p-4 card-shadow mb-4 space-y-3">
+          <input
+            type="text"
+            placeholder="Rechercher par nom ou email..."
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: "all", label: "Toutes" },
+              { key: "submitted", label: "Soumises" },
+              { key: "validated", label: "Validees" },
+              { key: "rejected", label: "Rejetees" },
+              { key: "draft", label: "Brouillons" },
+            ].map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setStatusFilter(f.key)}
+                className={"px-3 py-1.5 rounded-lg text-xs font-medium transition-colors " + (statusFilter === f.key ? "bg-[#0a2540] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}
+              >
+                {f.label}
+                {f.key !== "all" && (
+                  <span className="ml-1 opacity-70">({declarations.filter(d => d.status === f.key).length})</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {auth.userRole === "prime" && isOverdue && !hasCurrentDeclaration && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-center gap-3">
@@ -147,7 +188,7 @@ export function Declarations() {
         </div>
       ) : (
         <div className="space-y-3">
-          {declarations.map((d) => {
+          {filteredDeclarations.map((d) => {
             const status = statusConfig[d.status] || statusConfig.draft;
             const Icon = status.icon;
             return (
