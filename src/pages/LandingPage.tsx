@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import {
   ClipboardList, Scale, TrendingUp, Building2, FileCheck, MapPin,
-  ChevronDown, ChevronUp, ArrowRight, CheckCircle2, Circle, Clock,
+  ChevronDown, ChevronUp, ArrowRight, CheckCircle2,
   Phone, Mail, MapPinned, ExternalLink
 } from 'lucide-react';
 import { useAuth } from '@/App';
@@ -25,18 +25,10 @@ const eligibility = [
   { title: 'Autre Entite', items: ['Exercer dans une profession reglementee', 'Siege ou adresse professionnelle en RDC', 'Majorite des membres et dirigeants de nationalite congolaise', 'Attestation Fiscale', 'Attestation CNSS'] },
 ];
 
-const roadmap = [
-  { phase: 'MVP', status: 'active', features: ['Inscription unifiee avec upload de documents', 'Carte d identite numerique', 'Recherche d entreprises'] },
-  { phase: 'V2', status: 'upcoming', features: ['Flux d appels d offres avec alertes', 'Soumission directe', 'Tableau de bord de conformite'] },
-  { phase: 'V3', status: 'upcoming', features: ['Algorithme de matching intelligent', 'Messagerie integree', 'Analytics ARSP', 'Gestion des contrats'] },
-  { phase: 'V4', status: 'upcoming', features: ['Integration paiement', 'E-signature des contrats', 'Workflow de resolution des litiges'] },
-];
-
 export function LandingPage() {
   const navigate = useNavigate();
   const auth = useAuth();
   const [openEligibility, setOpenEligibility] = useState<number | null>(null);
-  const [openRoadmap, setOpenRoadmap] = useState<number | null>(0);
   const [showLogin, setShowLogin] = useState(false);
   const [role, setRole] = useState<'subcontractor' | 'prime' | 'admin'>('subcontractor');
   const [email, setEmail] = useState('');
@@ -81,10 +73,17 @@ export function LandingPage() {
       <section className="relative h-[600px] flex items-center justify-center overflow-hidden">
         <img src="/photo-fatshi-2.jpeg" alt="Kinshasa" className="absolute inset-0 w-full h-full object-cover object-top" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a2540]/80 via-[#0a2540]/60 to-[#0a2540]/90" />
-        <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto">
-          <div className="flex justify-center mb-6">
-            <img src="/arsp_logo_enhanced_final.png" alt="ARSP" className="w-20 h-20 rounded-full object-cover border-4 border-white/30" />
+
+        {/* Logo top left */}
+        <div className="absolute top-4 left-6 z-20 flex items-center gap-3">
+          <img src="/arsp_logo_enhanced_final.png" alt="ARSP" className="w-12 h-12 rounded-full object-cover border-2 border-white/30" />
+          <div>
+            <div className="text-white font-bold text-sm">ARSP</div>
+            <div className="text-blue-200 text-[10px]">Portail Numerique</div>
           </div>
+        </div>
+
+        <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
             Une classe moyenne congolaise, c est possible
           </h1>
@@ -191,64 +190,22 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Roadmap */}
-      <section className="py-20 px-4 max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-white mb-2">Feuille de route</h2>
-          <p className="text-blue-200">Les 4 phases de developpement du portail ARSP</p>
-        </div>
-        <div className="relative">
-          <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-blue-900" />
-          <div className="space-y-6">
-            {roadmap.map((r, i) => (
-              <div key={i} className="relative pl-16">
-                <div className={`absolute left-3 w-7 h-7 rounded-full border-2 flex items-center justify-center z-10 bg-[#0a2540] ${r.status === 'active' ? 'border-[#007FFF] text-[#007FFF]' : 'border-blue-800 text-blue-600'}`}>
-                  {r.status === 'active' ? <Circle className="w-3 h-3 fill-current step-pulse" /> : <Clock className="w-3 h-3" />}
-                </div>
-                <div
-                  className={`border rounded-xl p-5 cursor-pointer transition-all ${openRoadmap === i ? 'border-[#007FFF] bg-[#0d2f4f] shadow-md' : 'border-blue-900 bg-[#0d2f4f] hover:shadow-sm'}`}
-                  onClick={() => setOpenRoadmap(openRoadmap === i ? null : i)}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <span className={`px-2 py-0.5 rounded text-xs font-bold ${r.status === 'active' ? 'bg-[#007FFF] text-white' : 'bg-blue-900 text-blue-300'}`}>{r.phase}</span>
-                      <span className="font-semibold text-white">{r.status === 'active' ? 'En cours' : 'A venir'}</span>
-                    </div>
-                    {openRoadmap === i ? <ChevronUp className="w-5 h-5 text-blue-400" /> : <ChevronDown className="w-5 h-5 text-blue-400" />}
-                  </div>
-                  {openRoadmap === i && (
-                    <div className="mt-3 space-y-2 animate-fade-in">
-                      {r.features.map((f, j) => (
-                        <div key={j} className="flex items-center gap-2 text-sm text-blue-200">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                          {f}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Director Message */}
-      <section className="py-16 px-4 bg-white">
+      <section className="py-16 px-4 bg-[#0a2540]">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-8">
-          <img src="/Miguel.jpeg" alt="Directeur ARSP" className="w-48 h-48 rounded-2xl object-cover shadow-lg shrink-0" />
+          <img src="/Miguel.jpeg" alt="Directeur ARSP" className="w-72 h-72 rounded-2xl object-cover shadow-lg shrink-0" />
           <div>
-            <h2 className="text-2xl font-bold text-[#0a2540] mb-4">Message du Directeur General</h2>
-            <p className="text-gray-600 leading-relaxed italic">
+            <h2 className="text-2xl font-bold text-white mb-4">Message du Directeur General</h2>
+            <p className="text-blue-200 leading-relaxed italic">
               Notre mission est de structurer et de professionnaliser le secteur de la sous-traitance en Republique Democratique du Congo, en offrant aux entreprises congolaises les outils necessaires pour acceder aux marches et contribuer au developpement economique de notre pays.
             </p>
-            <p className="text-[#0a2540] font-semibold mt-4">Miguel Kashal Katemb, Directeur General de l ARSP</p>
+            <p className="text-white font-semibold mt-4">Miguel Kashal Katemb, Directeur General de l ARSP</p>
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-16 px-4 bg-[#0a2540] text-white text-center">
+      <section className="py-16 px-4 bg-[#0d2f4f] text-white text-center">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-3xl font-bold mb-4">Pret a rejoindre le registre ARSP ?</h2>
           <p className="text-white/80 mb-8">L enregistrement est gratuit et ouvert a toutes les entreprises congolaises eligibles a la sous-traitance.</p>
@@ -309,7 +266,6 @@ export function LandingPage() {
                 {isSignUp ? 'Selectionnez votre type de compte' : 'Entrez vos identifiants'}
               </p>
             </div>
-
             {isSignUp && (
               <div className="space-y-3 mb-4">
                 {([
@@ -327,7 +283,6 @@ export function LandingPage() {
                 ))}
               </div>
             )}
-
             <div className="space-y-3">
               <input
                 type="email"

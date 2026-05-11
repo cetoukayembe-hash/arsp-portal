@@ -26,6 +26,7 @@ const navGroups = [
     items: [
       { to: '/tenders', label: 'Appels d\'Offres', icon: Briefcase, roles: ['subcontractor', 'prime'] },
       { to: '/compliance', label: 'Conformite', icon: ShieldCheck, roles: ['subcontractor', 'admin'] },
+      { to: '/declarations', label: 'Declarations', icon: ClipboardList, roles: ['prime', 'admin'] },
     ],
   },
   {
