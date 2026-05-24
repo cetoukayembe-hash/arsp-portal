@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import * as XLSX from "xlsx";
 import { Plus, X, FileText, CheckCircle2, Clock, AlertTriangle, Trash2, Upload } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/App";
@@ -36,6 +37,53 @@ export function Declarations() {
   async function fetchDeclarationLines(declarationId) {
     const { data } = await supabase.from("declaration_lines").select("*").eq("declaration_id", declarationId);
     if (data) setDeclarationLines(data);
+  }
+
+  async function exportToExcel() {
+    const { data: allDecl } = await supabase.from("declarations").select("*").order("created_at", { ascending: false });
+    const { data: allLines } = await supabase.from("declaration_lines").select("*");
+    if (!allDecl || !allLines) return;
+
+    const rows = [];
+    allDecl.forEach(d => {
+      const lines = allLines.filter(l => l.declaration_id === d.id);
+      if (lines.length === 0) {
+        rows.push({
+          "Entreprise": d.prime_name,
+          "Email": d.prime_email,
+          "Mois": d.month,
+          "Annee": d.year,
+          "Statut": d.status,
+          "Sous-traitant": "",
+          "Type activite": "",
+          "Ref contrat": "",
+          "Montant HTVA (USD)": "",
+          "Montant ARSP (USD)": "",
+          "Soumis le": d.submitted_at ? new Date(d.submitted_at).toLocaleDateString("fr-FR") : "",
+        });
+      } else {
+        lines.forEach((l, i) => {
+          rows.push({
+            "Entreprise": i === 0 ? d.prime_name : "",
+            "Email": i === 0 ? d.prime_email : "",
+            "Mois": i === 0 ? d.month : "",
+            "Annee": i === 0 ? d.year : "",
+            "Statut": i === 0 ? d.status : "",
+            "Sous-traitant": l.subcontractor_name,
+            "Type activite": l.activity_type,
+            "Ref contrat": l.contract_ref,
+            "Montant HTVA (USD)": parseFloat(l.amount_htva).toFixed(2),
+            "Montant ARSP (USD)": parseFloat(l.amount_arsp).toFixed(2),
+            "Soumis le": i === 0 && d.submitted_at ? new Date(d.submitted_at).toLocaleDateString("fr-FR") : "",
+          });
+        });
+      }
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Declarations");
+    XLSX.writeFile(wb, "declarations_arsp_" + new Date().toISOString().split("T")[0] + ".xlsx");
   }
 
   function addLine() { setLines([...lines, { subcontractor_name: "", activity_type: "", contract_ref: "", amount_htva: "" }]); }
@@ -128,11 +176,18 @@ export function Declarations() {
           <h2 className="text-2xl font-bold text-[#0a2540]">{auth.userRole === "admin" ? "Declarations des Entreprises" : "Mes Declarations Mensuelles"}</h2>
           <p className="text-sm text-gray-500 mt-1">Declaration mensuelle de sous-traitance ARSP</p>
         </div>
-        {auth.userRole === "prime" && (
-          <button onClick={() => setShowNew(true)} className="flex items-center gap-2 px-4 py-2 bg-[#0a2540] text-white rounded-lg text-sm font-medium hover:bg-[#0d2f4f]">
-            <Plus className="w-4 h-4" />Nouvelle declaration
-          </button>
-        )}
+        <div className="flex gap-2">
+          {auth.userRole === "admin" && (
+            <button onClick={exportToExcel} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
+              Exporter Excel
+            </button>
+          )}
+          {auth.userRole === "prime" && (
+            <button onClick={() => setShowNew(true)} className="flex items-center gap-2 px-4 py-2 bg-[#0a2540] text-white rounded-lg text-sm font-medium hover:bg-[#0d2f4f]">
+              <Plus className="w-4 h-4" />Nouvelle declaration
+            </button>
+          )}
+        </div>
       </div>
 
       {auth.userRole === "admin" && (
