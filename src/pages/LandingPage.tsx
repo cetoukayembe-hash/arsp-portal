@@ -270,7 +270,6 @@ export function LandingPage() {
               <div className="space-y-3 mb-4">
                 {([
                   { id: 'subcontractor', label: 'Entreprise de Sous-traitance', desc: 'Je suis une entreprise sous-traitante' },
-                  { id: 'prime', label: 'Entreprise Donneuse d Ordres', desc: 'Je suis une entreprise principale' },
                 ] as const).map((r) => (
                   <button
                     key={r.id}
