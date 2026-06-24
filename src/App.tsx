@@ -131,10 +131,10 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const login = (role: 'subcontractor' | 'prime' | 'admin') => {
-    setUserRole(role);
-    setIsAuthenticated(true);
-  };
+  const login = () => {
+  // Role is set by loadUserProfile from database, not passed as parameter
+  setIsAuthenticated(true);
+};
 
   const logout = async () => {
     await supabase.auth.signOut();

@@ -50,7 +50,7 @@ export function LandingPage() {
           email: email,
           role: role,
         }]);
-        auth.login(role);
+        auth.login();
         setShowLogin(false);
         navigate('/dashboard');
       }
