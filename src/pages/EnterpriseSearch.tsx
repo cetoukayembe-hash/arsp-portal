@@ -3,7 +3,34 @@ import { Search, X, CheckCircle2, AlertCircle, Ban, Users, MapPin, ChevronRight 
 import { supabase } from '@/lib/supabase';
 
 const sectors = ['Construction', 'Mining', 'Logistics', 'IT', 'Agriculture', 'Energy', 'Services', 'Healthcare'];
-const provinces = ['Kinshasa', 'Haut-Katanga', 'Lualaba', 'Kongo Central', 'Nord-Kivu', 'Sud-Kivu', 'Ituri', 'Maniema'];
+const provinces = [
+  'Bas-Uele',
+  'Equateur',
+  'Haut-Katanga',
+  'Haut-Lomami',
+  'Haut-Uele',
+  'Ituri',
+  'Kasai',
+  'Kasai-Central',
+  'Kasai-Oriental',
+  'Kinshasa',
+  'Kongo Central',
+  'Kwango',
+  'Kwilu',
+  'Lomami',
+  'Lualaba',
+  'Mai-Ndombe',
+  'Maniema',
+  'Mongala',
+  'Nord-Kivu',
+  'Nord-Ubangi',
+  'Sankuru',
+  'Sud-Kivu',
+  'Sud-Ubangi',
+  'Tanganyika',
+  'Tshopo',
+  'Tshuapa'
+];
 
 export function EnterpriseSearch() {
   const [enterprises, setEnterprises] = useState<any[]>([]);
