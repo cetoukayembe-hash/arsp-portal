@@ -259,7 +259,7 @@ export function Approvals() {
                   <p className="text-sm font-medium text-gray-700 mb-2">Documents soumis</p>
                   <div className="grid grid-cols-2 gap-2">
                     {docLinks.map((doc) => {
-                      const url = (selectedItem as UserProfile)[doc.key] || '';
+                      const url = (selectedItem as any)[doc.key] || '';
                       return url ? (
                         <a key={doc.key} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100">
                           <FileText className="w-3 h-3" />{doc.label}
