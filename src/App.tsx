@@ -104,7 +104,6 @@ function ProtectedRoute({ children, allowedRoles }: { children: ReactNode; allow
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // Check account status
   if (auth.userStatus === 'pending') {
     return <PendingApprovalPage />;
   }
@@ -169,6 +168,11 @@ export default function App() {
     setUserEmail(email);
     setUserId(userId);
     setIsAuthenticated(true);
+    
+    // Log successful login
+    import('./lib/audit').then(({ logAudit }) => {
+      logAudit('LOGIN', 'user_profiles', userId);
+    });
   }
 
   useEffect(() => {
@@ -196,6 +200,14 @@ export default function App() {
   }, []);
 
   const logout = async () => {
+    // Log logout before clearing state
+    const currentUserId = userId;
+    if (currentUserId) {
+      import('./lib/audit').then(({ logAudit }) => {
+        logAudit('LOGOUT', 'user_profiles', currentUserId);
+      });
+    }
+    
     await supabase.auth.signOut();
     setIsAuthenticated(false);
     setUserEmail('');
