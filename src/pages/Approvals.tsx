@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle2, XCircle, Clock, Eye, X, Users, FileText, UserCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { logAudit } from '@/lib/audit';
 
 interface UserProfile {
   id: string;
@@ -62,12 +63,14 @@ export function Approvals() {
 
   async function handleApproveUser(id: string) {
     await supabase.from('user_profiles').update({ status: 'active' }).eq('id', id);
+    logAudit('ACCOUNT_APPROVE', 'user_profiles', id);
     setSelectedItem(null);
     fetchData();
   }
 
   async function handleRejectUser(id: string) {
     await supabase.from('user_profiles').update({ status: 'rejected', rejection_reason: rejectReason }).eq('id', id);
+    logAudit('ACCOUNT_REJECT', 'user_profiles', id, { reason: rejectReason });
     setSelectedItem(null);
     setShowReject(false);
     setRejectReason('');
@@ -76,12 +79,14 @@ export function Approvals() {
 
   async function handleApproveEnterprise(id: string) {
     await supabase.from('enterprises').update({ status: 'active' }).eq('id', id);
+    logAudit('ENTERPRISE_APPROVE', 'enterprises', id);
     setSelectedItem(null);
     fetchData();
   }
 
   async function handleRejectEnterprise(id: string) {
     await supabase.from('enterprises').update({ status: 'rejected', rejection_reason: rejectReason }).eq('id', id);
+    logAudit('ENTERPRISE_REJECT', 'enterprises', id, { reason: rejectReason });
     setSelectedItem(null);
     setShowReject(false);
     setRejectReason('');
