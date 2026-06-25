@@ -30,38 +30,20 @@ export function LandingPage() {
   const auth = useAuth();
   const [openEligibility, setOpenEligibility] = useState<number | null>(null);
   const [showLogin, setShowLogin] = useState(false);
-  const [role, setRole] = useState<'subcontractor' | 'prime' | 'admin'>('subcontractor');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
 
-  async function handleAuth() {
+  async function handleLogin() {
     setAuthLoading(true);
     setAuthError('');
-    if (isSignUp) {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) {
-        setAuthError(error.message);
-      } else if (data.user) {
-        await supabase.from('user_profiles').insert([{
-          id: data.user.id,
-          email: email,
-          role: role,
-        }]);
-        auth.login();
-        setShowLogin(false);
-        navigate('/dashboard');
-      }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setAuthError(error.message);
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        setAuthError(error.message);
-      } else {
-        setShowLogin(false);
-        navigate('/dashboard');
-      }
+      setShowLogin(false);
+      navigate('/dashboard');
     }
     setAuthLoading(false);
   }
@@ -108,13 +90,21 @@ export function LandingPage() {
                 </button>
               </div>
             ) : (
-              <button
-                onClick={() => setShowLogin(true)}
-                className="px-8 py-3 bg-white text-[#0a2540] rounded-lg font-semibold hover:bg-white/90 transition-all shadow-lg flex items-center justify-center gap-2"
-              >
-                S enregistrer
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              <>
+                <button
+                  onClick={() => navigate('/register')}
+                  className="px-8 py-3 bg-white text-[#0a2540] rounded-lg font-semibold hover:bg-white/90 transition-all shadow-lg flex items-center justify-center gap-2"
+                >
+                  S enregistrer
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setShowLogin(true)}
+                  className="px-8 py-3 bg-transparent border-2 border-white text-white rounded-lg font-semibold hover:bg-white/10 transition-all"
+                >
+                  Se connecter
+                </button>
+              </>
             )}
             <button
               onClick={() => navigate('/enterprise-search')}
@@ -210,7 +200,7 @@ export function LandingPage() {
           <h2 className="text-3xl font-bold mb-4">Pret a rejoindre le registre ARSP ?</h2>
           <p className="text-white/80 mb-8">L enregistrement est gratuit et ouvert a toutes les entreprises congolaises eligibles a la sous-traitance.</p>
           <button
-            onClick={() => { if (auth.isAuthenticated) { navigate('/dashboard'); } else { setShowLogin(true); } }}
+            onClick={() => { if (auth.isAuthenticated) { navigate('/dashboard'); } else { navigate('/register'); } }}
             className="px-8 py-3 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC] transition-all shadow-lg"
           >
             Commencer l enregistrement
@@ -259,29 +249,9 @@ export function LandingPage() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl animate-fade-in" onClick={(e) => e.stopPropagation()}>
             <div className="text-center mb-6">
               <img src="/arsp_logo_enhanced_final.png" alt="ARSP" className="w-16 h-16 rounded-full mx-auto mb-3 object-cover" />
-              <h3 className="text-xl font-bold text-[#0a2540]">
-                {isSignUp ? 'Creer un compte ARSP' : 'Connexion au Portail ARSP'}
-              </h3>
-              <p className="text-sm text-gray-500">
-                {isSignUp ? 'Selectionnez votre type de compte' : 'Entrez vos identifiants'}
-              </p>
+              <h3 className="text-xl font-bold text-[#0a2540]">Connexion au Portail ARSP</h3>
+              <p className="text-sm text-gray-500">Entrez vos identifiants</p>
             </div>
-            {isSignUp && (
-              <div className="space-y-3 mb-4">
-                {([
-                  { id: 'subcontractor', label: 'Entreprise de Sous-traitance', desc: 'Je suis une entreprise sous-traitante' },
-                ] as const).map((r) => (
-                  <button
-                    key={r.id}
-                    onClick={() => setRole(r.id)}
-                    className={`w-full p-3 rounded-lg border-2 text-left transition-all ${role === r.id ? 'border-[#007FFF] bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
-                  >
-                    <div className="font-medium text-[#0a2540]">{r.label}</div>
-                    <div className="text-xs text-gray-500">{r.desc}</div>
-                  </button>
-                ))}
-              </div>
-            )}
             <div className="space-y-3">
               <input
                 type="email"
@@ -292,7 +262,7 @@ export function LandingPage() {
               />
               <input
                 type="password"
-                placeholder="Mot de passe (min 6 caracteres)"
+                placeholder="Mot de passe"
                 className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -301,27 +271,25 @@ export function LandingPage() {
                 <p className="text-xs text-red-500 text-center">{authError}</p>
               )}
               <button
-                onClick={handleAuth}
+                onClick={handleLogin}
                 disabled={authLoading}
                 className="w-full py-2.5 bg-[#0a2540] text-white rounded-lg font-semibold hover:bg-[#0d2f4f] transition-colors disabled:opacity-50"
               >
-                {authLoading ? 'Chargement...' : isSignUp ? 'Creer mon compte' : 'Se connecter'}
+                {authLoading ? 'Chargement...' : 'Se connecter'}
               </button>
             </div>
             <p className="text-center text-xs text-gray-400 mt-4">
-              {isSignUp ? 'Deja un compte?' : 'Pas encore de compte?'}{' '}
+              Pas encore de compte?{' '}
               <span
                 className="text-[#007FFF] cursor-pointer hover:underline"
-                onClick={() => { setIsSignUp(!isSignUp); setAuthError(''); }}
+                onClick={() => { setShowLogin(false); navigate('/register'); }}
               >
-                {isSignUp ? 'Se connecter' : 'Creer un compte'}
+                Creer un compte
               </span>
             </p>
-            {!isSignUp && (
-              <p className="text-center text-xs text-gray-400 mt-2">
-                Compte administrateur? Contactez l equipe ARSP.
-              </p>
-            )}
+            <p className="text-center text-xs text-gray-400 mt-2">
+              Compte administrateur? Contactez l equipe ARSP.
+            </p>
           </div>
         </div>
       )}

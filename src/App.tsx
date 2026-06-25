@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { LandingPage } from './pages/LandingPage';
-import { RegistrationWizard } from './pages/RegistrationWizard';
+import { RegistrationRequest } from './pages/RegistrationRequest';
 import { DigitalID } from './pages/DigitalID';
 import { EnterpriseSearch } from './pages/EnterpriseSearch';
 import { TenderOpportunities } from './pages/TenderOpportunities';
@@ -23,9 +23,9 @@ import { Dashboard } from './pages/Dashboard';
 export interface AuthContextType {
   isAuthenticated: boolean;
   userRole: 'subcontractor' | 'prime' | 'admin';
+  userStatus: 'pending' | 'active' | 'rejected' | 'suspended';
   userEmail: string;
   userId: string;
-  login: (role: 'subcontractor' | 'prime' | 'admin') => void;
   logout: () => void;
 }
 
@@ -52,15 +52,75 @@ function DashboardLayout({ children }: { children: ReactNode }) {
   );
 }
 
+function PendingApprovalPage() {
+  return (
+    <div className="min-h-screen bg-[#F6F9FC] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center card-shadow">
+        <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <span className="text-2xl">⏳</span>
+        </div>
+        <h2 className="text-xl font-bold text-[#0a2540] mb-2">Compte en attente</h2>
+        <p className="text-gray-500 mb-4">
+          Votre demande d'enregistrement est en cours de verification par l'equipe ARSP. 
+          Vous recevrez un email lorsque votre compte sera approuve.
+        </p>
+        <p className="text-xs text-gray-400">
+          Delai moyen: 24-48 heures ouvrables
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function RejectedAccountPage({ reason }: { reason?: string }) {
+  return (
+    <div className="min-h-screen bg-[#F6F9FC] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center card-shadow">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <span className="text-2xl">❌</span>
+        </div>
+        <h2 className="text-xl font-bold text-[#0a2540] mb-2">Demande rejetee</h2>
+        <p className="text-gray-500 mb-4">
+          Votre demande d'enregistrement a ete rejetee.
+        </p>
+        {reason && (
+          <div className="bg-red-50 rounded-lg p-3 mb-4">
+            <p className="text-sm text-red-700"><strong>Motif:</strong> {reason}</p>
+          </div>
+        )}
+        <p className="text-xs text-gray-400">
+          Contactez ARSP pour plus d'informations.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ProtectedRoute({ children, allowedRoles }: { children: ReactNode; allowedRoles?: string[] }) {
   const auth = useAuth();
   const location = useLocation();
+
   if (!auth.isAuthenticated) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
+
+  // Check account status
+  if (auth.userStatus === 'pending') {
+    return <PendingApprovalPage />;
+  }
+
+  if (auth.userStatus === 'rejected') {
+    return <RejectedAccountPage />;
+  }
+
+  if (auth.userStatus === 'suspended') {
+    return <RejectedAccountPage reason="Compte suspendu" />;
+  }
+
   if (allowedRoles && !allowedRoles.includes(auth.userRole)) {
     return <Navigate to="/dashboard" replace />;
   }
+
   return <DashboardLayout>{children}</DashboardLayout>;
 }
 
@@ -68,7 +128,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/register" element={<ProtectedRoute><RegistrationWizard /></ProtectedRoute>} />
+      <Route path="/register" element={<RegistrationRequest />} />
       <Route path="/digital-id" element={<ProtectedRoute><DigitalID /></ProtectedRoute>} />
       <Route path="/enterprise-search" element={<EnterpriseSearch />} />
       <Route path="/tenders" element={<ProtectedRoute><TenderOpportunities /></ProtectedRoute>} />
@@ -90,6 +150,7 @@ function AppRoutes() {
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<'subcontractor' | 'prime' | 'admin'>('subcontractor');
+  const [userStatus, setUserStatus] = useState<'pending' | 'active' | 'rejected' | 'suspended'>('pending');
   const [userEmail, setUserEmail] = useState('');
   const [userId, setUserId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -97,11 +158,13 @@ export default function App() {
   async function loadUserProfile(userId: string, email: string) {
     const { data } = await supabase
       .from('user_profiles')
-      .select('role')
+      .select('role, status')
       .eq('id', userId)
       .single();
+    
     if (data) {
       setUserRole(data.role as 'subcontractor' | 'prime' | 'admin');
+      setUserStatus(data.status as 'pending' | 'active' | 'rejected' | 'suspended');
     }
     setUserEmail(email);
     setUserId(userId);
@@ -124,6 +187,7 @@ export default function App() {
         setUserEmail('');
         setUserId('');
         setUserRole('subcontractor');
+        setUserStatus('pending');
         setLoading(false);
       }
     });
@@ -131,17 +195,13 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const login = () => {
-  // Role is set by loadUserProfile from database, not passed as parameter
-  setIsAuthenticated(true);
-};
-
   const logout = async () => {
     await supabase.auth.signOut();
     setIsAuthenticated(false);
     setUserEmail('');
     setUserId('');
     setUserRole('subcontractor');
+    setUserStatus('pending');
   };
 
   if (loading) {
@@ -156,7 +216,7 @@ export default function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, userRole, userEmail, userId, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, userRole, userStatus, userEmail, userId, logout }}>
       <BrowserRouter>
         <AppRoutes />
       </BrowserRouter>
