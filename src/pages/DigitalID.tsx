@@ -180,7 +180,7 @@ export function DigitalID() {
   const isExpired = new Date(digitalId.valid_until) < new Date();
   const daysUntilExpiry = Math.ceil((new Date(digitalId.valid_until).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
 
-  const verifyUrl = `https://arsp.cd/verify/${digitalId.arsp_id}`;
+  const verifyUrl = `${window.location.origin}/verify/${digitalId.arsp_id}`;
 
   return (
     <div className="max-w-3xl mx-auto">

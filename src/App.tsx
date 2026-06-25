@@ -19,6 +19,7 @@ import { Approvals } from './pages/Approvals';
 import { supabase } from './lib/supabase';
 import { Declarations } from './pages/Declarations';
 import { Dashboard } from './pages/Dashboard';
+import { VerifyCard } from './pages/VerifyCard';
 
 export interface AuthContextType {
   isAuthenticated: boolean;
@@ -145,6 +146,7 @@ function AppRoutes() {
       <Route path="/approvals" element={<ProtectedRoute allowedRoles={['admin']}><Approvals /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/declarations" element={<ProtectedRoute allowedRoles={['prime', 'admin']}><Declarations /></ProtectedRoute>} />
+      <Route path="/verify/:arspId" element={<VerifyCard />} />
     </Routes>
   );
 }
