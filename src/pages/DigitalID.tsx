@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/App';
 import { Download, Share2, Printer, AlertTriangle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import html2canvas from 'html2canvas';
 
 export function DigitalID() {
   const auth = useAuth();
@@ -48,34 +49,85 @@ export function DigitalID() {
     return new Date(dateStr).toLocaleDateString('fr-FR');
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!cardRef.current) return;
     
-    // Create a canvas from the card element
-    const svg = cardRef.current.querySelector('svg');
-    if (!svg) return;
-    
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    
-    img.onload = () => {
-      canvas.width = 400;
-      canvas.height = 600;
-      ctx?.drawImage(img, 0, 0);
+    try {
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+      });
       
       const link = document.createElement('a');
       link.download = `ARSP-Carte-${digitalId?.arsp_id}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
-    };
-    
-    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+    } catch (err) {
+      console.error('Download failed:', err);
+      alert('Erreur lors du telechargement. Veuillez reessayer.');
+    }
   };
 
   const handlePrint = () => {
-    window.print();
+    if (!cardRef.current) return;
+    
+    const printWindow = window.open('', '_blank', 'width=500,height=700');
+    if (!printWindow) {
+      alert('Veuillez autoriser les popups pour l\'impression.');
+      return;
+    }
+    
+    // Clone the card node
+    const cardClone = cardRef.current.cloneNode(true) as HTMLElement;
+    
+    // Remove any buttons from the clone
+    const buttons = cardClone.querySelectorAll('button');
+    buttons.forEach(btn => btn.remove());
+    
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>ARSP Carte - ${digitalId?.arsp_id}</title>
+          <style>
+            @page { margin: 0; size: auto; }
+            body { 
+              margin: 0; 
+              padding: 20px; 
+              font-family: system-ui, -apple-system, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+              background: #f6f9fc;
+            }
+            .card-wrapper { 
+              background: white; 
+              border-radius: 12px; 
+              overflow: hidden;
+              box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+              width: 400px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="card-wrapper">${cardClone.innerHTML}</div>
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                window.close();
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(printContent);
+    printWindow.document.close();
   };
 
   const handleShare = async () => {
@@ -92,7 +144,6 @@ export function DigitalID() {
         // User cancelled
       }
     } else {
-      // Fallback: copy to clipboard
       navigator.clipboard.writeText(shareData.url);
       alert('Lien copie dans le presse-papiers!');
     }
@@ -136,9 +187,9 @@ export function DigitalID() {
       <h2 className="text-2xl font-bold text-[#0a2540] mb-6">Ma Carte Numerique ARSP</h2>
       <div className="flex flex-col lg:flex-row gap-6">
 
-        {/* ID Card - ref for download */}
-        <div className="flex-1" ref={cardRef}>
-          <div className="bg-white rounded-xl overflow-hidden card-shadow max-w-[400px] mx-auto print:shadow-none">
+        {/* ID Card - ref for download/print */}
+        <div className="flex-1">
+          <div ref={cardRef} className="bg-white rounded-xl overflow-hidden card-shadow max-w-[400px] mx-auto">
             {/* Header */}
             <div className="bg-[#0a2540] p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -226,8 +277,8 @@ export function DigitalID() {
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex gap-2 mt-4 max-w-[400px] mx-auto print:hidden">
+          {/* Action buttons - OUTSIDE the card ref so they don't appear in download/print */}
+          <div className="flex gap-2 mt-4 max-w-[400px] mx-auto">
             <button 
               onClick={handleDownload}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[#0a2540] text-white rounded-lg text-sm font-medium hover:bg-[#0d2f4f]"
