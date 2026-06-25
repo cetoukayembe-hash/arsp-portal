@@ -10,7 +10,36 @@ const docFields = [
   { key: 'doc_identity', label: "Piece d'identite du representant", required: true },
 ];
 
-const sectors = ['Construction', 'Mining', 'Logistics', 'IT', 'Agriculture', 'Energy', 'Services', 'Healthcare', 'Finance', 'Education', 'Transport', 'Manufacturing'];
+const sectors = [
+  'Agriculture',
+  'Agro-industrie',
+  'Assurances',
+  'Banques et Finance',
+  'BTP / Construction',
+  'Commerce general',
+  'Communication / Media',
+  'Consulting',
+  'Eau et Assainissement',
+  'Education / Formation',
+  'Energie / Electricite',
+  'Environnement',
+  'Foresterie / Bois',
+  'Hotellerie / Tourisme',
+  'Immobilier',
+  'Industrie manufacturiere',
+  'Informatique / IT / Telecom',
+  'Logistique / Transport',
+  'Mines / Metallurgie',
+  'Peches et Elevage',
+  'Petrole et Gaz',
+  'Pharmaceutique / Sante',
+  'Restauration / Catering',
+  'Securite',
+  'Textile / Habillement',
+  'Transports',
+  'Travaux publics / Genie civil',
+  'Autre'
+];
 
 const provinces = [
   'Bas-Uele', 'Equateur', 'Haut-Katanga', 'Haut-Lomami', 'Haut-Uele', 'Ituri',
