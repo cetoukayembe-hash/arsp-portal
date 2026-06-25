@@ -152,7 +152,7 @@ function AppRoutes() {
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<'subcontractor' | 'prime' | 'admin'>('subcontractor');
-  const [userStatus, setUserStatus] = useState<'pending' | 'active' | 'rejected' | 'suspended'>('pending');
+  const [userStatus, setUserStatus] = useState<'pending' | 'active' | 'rejected' | 'suspended'>('active');
   const [userEmail, setUserEmail] = useState('');
   const [userId, setUserId] = useState('');
   const [loading, setLoading] = useState(true);
