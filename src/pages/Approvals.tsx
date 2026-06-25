@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle2, XCircle, Clock, Eye, X, Users, FileText, UserCheck } from 'lucide-react';
+import { CheckCircle2, XCircle, Eye, X, Users, FileText, UserCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { logAudit } from '@/lib/audit';
 
@@ -62,7 +62,12 @@ export function Approvals() {
   }
 
   async function handleApproveUser(id: string) {
+    // Approve user account
     await supabase.from('user_profiles').update({ status: 'active' }).eq('id', id);
+    
+    // Also approve linked enterprise
+    await supabase.from('enterprises').update({ status: 'active' }).eq('user_id', id);
+    
     logAudit('ACCOUNT_APPROVE', 'user_profiles', id);
     setSelectedItem(null);
     fetchData();
