@@ -65,8 +65,37 @@ export function Approvals() {
     // Approve user account
     await supabase.from('user_profiles').update({ status: 'active' }).eq('id', id);
     
-    // Also approve linked enterprise
+    // Approve linked enterprise
     await supabase.from('enterprises').update({ status: 'active' }).eq('user_id', id);
+    
+    // Get enterprise data for digital ID
+    const { data: enterprise } = await supabase
+      .from('enterprises')
+      .select('id, name, created_at')
+      .eq('user_id', id)
+      .single();
+    
+    if (enterprise) {
+      // Generate ARSP ID: ARSP-YYYY-XXXXX
+      const year = new Date().getFullYear();
+      const randomSuffix = Math.floor(10000 + Math.random() * 90000);
+      const arspId = `ARSP-${year}-${randomSuffix}`;
+      
+      // Valid for 3 years
+      const validFrom = new Date();
+      const validUntil = new Date();
+      validUntil.setFullYear(validUntil.getFullYear() + 3);
+      
+      // Create digital ID
+      await supabase.from('digital_ids').insert({
+        user_id: id,
+        enterprise_id: enterprise.id,
+        arsp_id: arspId,
+        valid_from: validFrom.toISOString().split('T')[0],
+        valid_until: validUntil.toISOString().split('T')[0],
+        status: 'active',
+      });
+    }
     
     logAudit('ACCOUNT_APPROVE', 'user_profiles', id);
     setSelectedItem(null);

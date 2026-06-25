@@ -1,23 +1,46 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Download, Share2, Printer } from 'lucide-react';
+import { useAuth } from '@/App';
+import { Download, Share2, Printer, AlertTriangle } from 'lucide-react';
 
 export function DigitalID() {
+  const auth = useAuth();
+  const [digitalId, setDigitalId] = useState<any | null>(null);
   const [enterprise, setEnterprise] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    async function fetchEnterprise() {
-      const { data } = await supabase
-        .from('enterprises')
+    async function fetchDigitalId() {
+      if (!auth.userId) {
+        setLoading(false);
+        return;
+      }
+
+      // Fetch user's digital ID
+      const { data: digitalData } = await supabase
+        .from('digital_ids')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (data && data[0]) setEnterprise(data[0]);
+        .eq('user_id', auth.userId)
+        .single();
+
+      if (digitalData) {
+        setDigitalId(digitalData);
+        
+        // Fetch linked enterprise
+        const { data: enterpriseData } = await supabase
+          .from('enterprises')
+          .select('*')
+          .eq('user_id', auth.userId)
+          .single();
+          
+        if (enterpriseData) setEnterprise(enterpriseData);
+      }
+      
       setLoading(false);
     }
-    fetchEnterprise();
-  }, []);
+    fetchDigitalId();
+  }, [auth.userId]);
 
   const getInitials = (name: string) => {
     if (!name) return 'AR';
@@ -37,29 +60,28 @@ export function DigitalID() {
     );
   }
 
-  if (!enterprise) {
+  if (!digitalId || !enterprise) {
     return (
       <div className="max-w-3xl mx-auto">
         <h2 className="text-2xl font-bold text-[#0a2540] mb-6">Ma Carte Numerique ARSP</h2>
         <div className="bg-white rounded-xl p-8 text-center card-shadow">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl">🪪</span>
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-8 h-8 text-amber-600" />
           </div>
-          <h3 className="text-lg font-semibold text-[#0a2540] mb-2">Aucune entreprise enregistree</h3>
-          <p className="text-gray-500 text-sm mb-4">Vous devez d'abord completer votre inscription pour obtenir votre carte numerique.</p>
-          <a href="/register" className="px-6 py-2 bg-[#007FFF] text-white rounded-lg text-sm font-medium hover:bg-[#0066CC]">
-            S'inscrire maintenant
-          </a>
+          <h3 className="text-lg font-semibold text-[#0a2540] mb-2">Carte non disponible</h3>
+          <p className="text-gray-500 text-sm mb-4">
+            {auth.userStatus === 'pending' 
+              ? 'Votre compte est en attente d\'approbation. Votre carte sera generee apres approbation.'
+              : 'Votre carte numerique n\'a pas encore ete generee. Contactez l\'administration ARSP.'
+            }
+          </p>
         </div>
       </div>
     );
   }
 
-  const arspId = 'ARSP-' + enterprise.created_at?.substring(0, 4) + '-' + enterprise.id?.substring(0, 6).toUpperCase();
-  const validFrom = formatDate(enterprise.created_at);
-  const validUntil = new Date(enterprise.created_at);
-  validUntil.setFullYear(validUntil.getFullYear() + 3);
-  const validUntilStr = validUntil.toLocaleDateString('fr-FR');
+  const isExpired = new Date(digitalId.valid_until) < new Date();
+  const daysUntilExpiry = Math.ceil((new Date(digitalId.valid_until).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -95,11 +117,11 @@ export function DigitalID() {
                   <div className="font-bold text-[#0a2540] text-sm leading-tight">{enterprise.name}</div>
                   <div className="mt-1">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                      enterprise.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
-                      enterprise.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                      'bg-red-100 text-red-700'
+                      isExpired ? 'bg-red-100 text-red-700' :
+                      daysUntilExpiry < 90 ? 'bg-amber-100 text-amber-700' :
+                      'bg-emerald-100 text-emerald-700'
                     }`}>
-                      {enterprise.status === 'active' ? 'Agree' : enterprise.status === 'pending' ? 'En attente' : 'Suspendu'}
+                      {isExpired ? 'Expiree' : daysUntilExpiry < 90 ? `Expire dans ${daysUntilExpiry}j` : 'Valide'}
                     </span>
                   </div>
                 </div>
@@ -112,7 +134,7 @@ export function DigitalID() {
                 </div>
                 <div className="bg-[#F6F9FC] rounded-lg p-2">
                   <div className="text-gray-400 uppercase tracking-wider mb-1">ID ARSP</div>
-                  <div className="font-medium text-[#0a2540]">{arspId}</div>
+                  <div className="font-medium text-[#0a2540]">{digitalId.arsp_id}</div>
                 </div>
                 <div className="bg-[#F6F9FC] rounded-lg p-2">
                   <div className="text-gray-400 uppercase tracking-wider mb-1">Secteur</div>
@@ -126,7 +148,9 @@ export function DigitalID() {
 
               <div className="bg-[#F6F9FC] rounded-lg p-2 text-xs mb-4">
                 <div className="text-gray-400 uppercase tracking-wider mb-1">Validite</div>
-                <div className="font-medium text-[#0a2540]">{validFrom} - {validUntilStr}</div>
+                <div className="font-medium text-[#0a2540]">
+                  {formatDate(digitalId.valid_from)} - {formatDate(digitalId.valid_until)}
+                </div>
               </div>
 
               {/* QR Code placeholder */}
@@ -148,7 +172,7 @@ export function DigitalID() {
 
             {/* Footer */}
             <div className="bg-[#0a2540] px-4 py-2 flex items-center justify-between">
-              <div className="text-[10px] text-blue-200">arsp.cd/verify/{arspId}</div>
+              <div className="text-[10px] text-blue-200">arsp.cd/verify/{digitalId.arsp_id}</div>
               <div className="text-[10px] text-blue-200">RDC</div>
             </div>
           </div>
@@ -197,7 +221,7 @@ export function DigitalID() {
             <h4 className="text-sm font-semibold text-[#0a2540] mb-2">Verification</h4>
             <p className="text-xs text-gray-600 mb-2">Toute partie tierce peut verifier l'authenticite de cette carte en visitant:</p>
             <code className="text-xs bg-[#F6F9FC] px-2 py-1 rounded text-[#007FFF] block break-all">
-              arsp.cd/verify/{arspId}
+              arsp.cd/verify/{digitalId.arsp_id}
             </code>
           </div>
 
