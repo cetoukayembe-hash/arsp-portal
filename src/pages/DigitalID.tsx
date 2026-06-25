@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/App';
 import { Download, Share2, Printer, AlertTriangle } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 export function DigitalID() {
   const auth = useAuth();
+  const cardRef = useRef<HTMLDivElement>(null);
   const [digitalId, setDigitalId] = useState<any | null>(null);
   const [enterprise, setEnterprise] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     async function fetchDigitalId() {
@@ -17,7 +18,6 @@ export function DigitalID() {
         return;
       }
 
-      // Fetch user's digital ID
       const { data: digitalData } = await supabase
         .from('digital_ids')
         .select('*')
@@ -26,17 +26,13 @@ export function DigitalID() {
 
       if (digitalData) {
         setDigitalId(digitalData);
-        
-        // Fetch linked enterprise
         const { data: enterpriseData } = await supabase
           .from('enterprises')
           .select('*')
           .eq('user_id', auth.userId)
           .single();
-          
         if (enterpriseData) setEnterprise(enterpriseData);
       }
-      
       setLoading(false);
     }
     fetchDigitalId();
@@ -50,6 +46,56 @@ export function DigitalID() {
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';
     return new Date(dateStr).toLocaleDateString('fr-FR');
+  };
+
+  const handleDownload = () => {
+    if (!cardRef.current) return;
+    
+    // Create a canvas from the card element
+    const svg = cardRef.current.querySelector('svg');
+    if (!svg) return;
+    
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      canvas.width = 400;
+      canvas.height = 600;
+      ctx?.drawImage(img, 0, 0);
+      
+      const link = document.createElement('a');
+      link.download = `ARSP-Carte-${digitalId?.arsp_id}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+    
+    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: 'Ma Carte ARSP',
+      text: `Entreprise: ${enterprise?.name}. Verifier: arsp.cd/verify/${digitalId?.arsp_id}`,
+      url: `https://arsp.cd/verify/${digitalId?.arsp_id}`,
+    };
+    
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // User cancelled
+      }
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(shareData.url);
+      alert('Lien copie dans le presse-papiers!');
+    }
   };
 
   if (loading) {
@@ -69,10 +115,10 @@ export function DigitalID() {
             <AlertTriangle className="w-8 h-8 text-amber-600" />
           </div>
           <h3 className="text-lg font-semibold text-[#0a2540] mb-2">Carte non disponible</h3>
-          <p className="text-gray-500 text-sm mb-4">
+          <p className="text-gray-500 text-sm">
             {auth.userStatus === 'pending' 
-              ? 'Votre compte est en attente d\'approbation. Votre carte sera generee apres approbation.'
-              : 'Votre carte numerique n\'a pas encore ete generee. Contactez l\'administration ARSP.'
+              ? 'Votre compte est en attente d\'approbation.'
+              : 'Contactez l\'administration ARSP.'
             }
           </p>
         </div>
@@ -83,14 +129,16 @@ export function DigitalID() {
   const isExpired = new Date(digitalId.valid_until) < new Date();
   const daysUntilExpiry = Math.ceil((new Date(digitalId.valid_until).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
 
+  const verifyUrl = `https://arsp.cd/verify/${digitalId.arsp_id}`;
+
   return (
     <div className="max-w-3xl mx-auto">
       <h2 className="text-2xl font-bold text-[#0a2540] mb-6">Ma Carte Numerique ARSP</h2>
       <div className="flex flex-col lg:flex-row gap-6">
 
-        {/* ID Card */}
-        <div className="flex-1">
-          <div className="bg-white rounded-xl overflow-hidden card-shadow max-w-[400px] mx-auto">
+        {/* ID Card - ref for download */}
+        <div className="flex-1" ref={cardRef}>
+          <div className="bg-white rounded-xl overflow-hidden card-shadow max-w-[400px] mx-auto print:shadow-none">
             {/* Header */}
             <div className="bg-[#0a2540] p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -153,14 +201,15 @@ export function DigitalID() {
                 </div>
               </div>
 
-              {/* QR Code placeholder */}
+              {/* Real QR Code */}
               <div className="flex items-center justify-between">
-                <div className="w-16 h-16 bg-[#0a2540] rounded-lg flex items-center justify-center">
-                  <div className="grid grid-cols-3 gap-0.5">
-                    {Array.from({ length: 9 }).map((_, i) => (
-                      <div key={i} className={`w-3 h-3 rounded-sm ${Math.random() > 0.5 ? 'bg-white' : 'bg-[#0a2540]'}`} />
-                    ))}
-                  </div>
+                <div className="bg-white p-1 rounded-lg">
+                  <QRCodeSVG 
+                    value={verifyUrl} 
+                    size={64} 
+                    level="M"
+                    includeMargin={false}
+                  />
                 </div>
                 <div className="text-right">
                   <div className="text-[10px] text-gray-400">Capital congolais</div>
@@ -178,16 +227,25 @@ export function DigitalID() {
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-2 mt-4 max-w-[400px] mx-auto">
-            <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[#0a2540] text-white rounded-lg text-sm font-medium hover:bg-[#0d2f4f]">
+          <div className="flex gap-2 mt-4 max-w-[400px] mx-auto print:hidden">
+            <button 
+              onClick={handleDownload}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[#0a2540] text-white rounded-lg text-sm font-medium hover:bg-[#0d2f4f]"
+            >
               <Download className="w-4 h-4" />
               Telecharger
             </button>
-            <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">
+            <button 
+              onClick={handlePrint}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
+            >
               <Printer className="w-4 h-4" />
               Imprimer
             </button>
-            <button className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">
+            <button 
+              onClick={handleShare}
+              className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
+            >
               <Share2 className="w-4 h-4" />
             </button>
           </div>
@@ -219,9 +277,9 @@ export function DigitalID() {
 
           <div className="bg-white rounded-xl p-4 card-shadow">
             <h4 className="text-sm font-semibold text-[#0a2540] mb-2">Verification</h4>
-            <p className="text-xs text-gray-600 mb-2">Toute partie tierce peut verifier l'authenticite de cette carte en visitant:</p>
+            <p className="text-xs text-gray-600 mb-2">Scannez le QR code ou visitez:</p>
             <code className="text-xs bg-[#F6F9FC] px-2 py-1 rounded text-[#007FFF] block break-all">
-              arsp.cd/verify/{digitalId.arsp_id}
+              {verifyUrl}
             </code>
           </div>
 
