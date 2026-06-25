@@ -104,15 +104,18 @@ function ProtectedRoute({ children, allowedRoles }: { children: ReactNode; allow
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  if (auth.userStatus === 'pending') {
+  // Admins are always active, regardless of status field
+  const effectiveStatus = auth.userRole === 'admin' ? 'active' : auth.userStatus;
+
+  if (effectiveStatus === 'pending') {
     return <PendingApprovalPage />;
   }
 
-  if (auth.userStatus === 'rejected') {
+  if (effectiveStatus === 'rejected') {
     return <RejectedAccountPage />;
   }
 
-  if (auth.userStatus === 'suspended') {
+  if (effectiveStatus === 'suspended') {
     return <RejectedAccountPage reason="Compte suspendu" />;
   }
 
@@ -163,7 +166,9 @@ export default function App() {
     
     if (data) {
       setUserRole(data.role as 'subcontractor' | 'prime' | 'admin');
-      setUserStatus(data.status as 'pending' | 'active' | 'rejected' | 'suspended');
+      // Admins are always active, regardless of database status
+      const isAdmin = data.role === 'admin';
+      setUserStatus(isAdmin ? 'active' : data.status as 'pending' | 'active' | 'rejected' | 'suspended');
     }
     setUserEmail(email);
     setUserId(userId);
