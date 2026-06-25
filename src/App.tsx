@@ -104,7 +104,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: ReactNode; allow
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // Admins are always active, regardless of status field
+  // Admins are always active, regardless of database status
   const effectiveStatus = auth.userRole === 'admin' ? 'active' : auth.userStatus;
 
   if (effectiveStatus === 'pending') {
@@ -158,21 +158,33 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   async function loadUserProfile(userId: string, email: string) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('user_profiles')
       .select('role, status')
       .eq('id', userId)
       .single();
     
+    if (error) {
+      console.error('Profile load error:', error);
+      setLoading(false);
+      return;
+    }
+    
     if (data) {
       setUserRole(data.role as 'subcontractor' | 'prime' | 'admin');
       // Admins are always active, regardless of database status
       const isAdmin = data.role === 'admin';
-      setUserStatus(isAdmin ? 'active' : data.status as 'pending' | 'active' | 'rejected' | 'suspended');
+      const newStatus = isAdmin ? 'active' : (data.status || 'pending');
+      setUserStatus(newStatus as 'pending' | 'active' | 'rejected' | 'suspended');
+    } else {
+      // No profile found — default to pending
+      setUserStatus('pending');
     }
+    
     setUserEmail(email);
     setUserId(userId);
     setIsAuthenticated(true);
+    setLoading(false);
     
     // Log successful login
     import('./lib/audit').then(({ logAudit }) => {
@@ -184,8 +196,9 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         loadUserProfile(session.user.id, session.user.email || '');
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -205,7 +218,6 @@ export default function App() {
   }, []);
 
   const logout = async () => {
-    // Log logout before clearing state
     const currentUserId = userId;
     if (currentUserId) {
       import('./lib/audit').then(({ logAudit }) => {
