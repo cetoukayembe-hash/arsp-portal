@@ -156,10 +156,15 @@ export function RegistrationRequest() {
     });
 
     if (profileError) {
-      setError('Erreur sauvegarde profil');
-      setUploading(false);
-      return;
-    }
+  console.error('Profile insert error:', profileError);
+  setError(`Erreur profil: ${profileError.message}`);
+  setUploading(false);
+  return;
+}
+      
+      
+      
+    
 
     // Insert enterprise
     const { error: enterpriseError } = await supabase.from('enterprises').insert({
@@ -186,10 +191,15 @@ export function RegistrationRequest() {
 
     if (enterpriseError) {
   console.error('Enterprise insert error:', enterpriseError);
-  setError(`Erreur: ${enterpriseError.message}`);
+  setError(`Erreur entreprise: ${enterpriseError.message}`);
   setUploading(false);
   return;
 }
+  
+  
+  
+  
+
 
     setSubmitted(true);
     setUploading(false);
