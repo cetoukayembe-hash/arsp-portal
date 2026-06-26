@@ -63,10 +63,12 @@ export function Approvals() {
 
   async function handleApproveUser(id: string) {
     // Approve user account
-    await supabase.from('user_profiles').update({ status: 'active' }).eq('id', id);
+    const { error: profileErr } = await supabase.from('user_profiles').update({ status: 'active' }).eq('id', id);
+    if (profileErr) console.error('Profile update error:', profileErr);
     
     // Approve linked enterprise
-    await supabase.from('enterprises').update({ status: 'active' }).eq('user_id', id);
+    const { error: entErr } = await supabase.from('enterprises').update({ status: 'active' }).eq('user_id', id);
+    if (entErr) console.error('Enterprise update error:', entErr);
     
     // Get enterprise data for digital ID
     const { data: enterprise } = await supabase
