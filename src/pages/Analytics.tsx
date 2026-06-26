@@ -3,75 +3,120 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { Download, Calendar, TrendingUp, Users, FileCheck, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-const monthlyData = [
-  { month: 'Jan', registrations: 45, approvals: 38 },
-  { month: 'Fev', registrations: 52, approvals: 44 },
-  { month: 'Mar', registrations: 48, approvals: 41 },
-  { month: 'Avr', registrations: 61, approvals: 55 },
-  { month: 'Mai', registrations: 55, approvals: 49 },
-  { month: 'Juin', registrations: 67, approvals: 58 },
-  { month: 'Juil', registrations: 72, approvals: 63 },
-  { month: 'Aout', registrations: 58, approvals: 51 },
-  { month: 'Sep', registrations: 65, approvals: 57 },
-  { month: 'Oct', registrations: 70, approvals: 62 },
-  { month: 'Nov', registrations: 78, approvals: 69 },
-  { month: 'Dec', registrations: 82, approvals: 74 },
-];
-
-const provinceData = [
-  { name: 'Kinshasa', value: 420 },
-  { name: 'Haut-Katanga', value: 280 },
-  { name: 'Lualaba', value: 190 },
-  { name: 'Kongo Central', value: 150 },
-  { name: 'Nord-Kivu', value: 120 },
-  { name: 'Autres', value: 180 },
-];
-
-const complianceTrend = [
-  { month: 'Jan', score: 78 },
-  { month: 'Fev', score: 80 },
-  { month: 'Mar', score: 79 },
-  { month: 'Avr', score: 82 },
-  { month: 'Mai', score: 83 },
-  { month: 'Juin', score: 85 },
-  { month: 'Juil', score: 84 },
-  { month: 'Aout', score: 86 },
-  { month: 'Sep', score: 87 },
-  { month: 'Oct', score: 88 },
-  { month: 'Nov', score: 89 },
-  { month: 'Dec', score: 91 },
-];
-
-const COLORS = ['#0a2540', '#007FFF', '#FFD700', '#DC143C', '#10B981', '#8b5cf6'];
+// ARSP Brand Colors
+const COLORS = ['#1a237e', '#007FFF', '#FFCD00', '#EF4135', '#6b7280', '#10B981'];
 
 export function Analytics() {
   const [enterprises, setEnterprises] = useState<any[]>([]);
   const [tenders, setTenders] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState('12mois');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
+      setLoading(true);
       const { data: ent } = await supabase.from('enterprises').select('*');
       const { data: ten } = await supabase.from('tenders').select('*');
       const { data: con } = await supabase.from('contracts').select('*');
+      const { data: usr } = await supabase.from('user_profiles').select('*');
       if (ent) setEnterprises(ent);
       if (ten) setTenders(ten);
       if (con) setContracts(con);
+      if (usr) setUsers(usr);
+      setLoading(false);
     }
     fetchData();
   }, []);
 
+  // Real sector distribution from database
   const sectorCount = enterprises.reduce((acc: Record<string, number>, e) => {
     if (e.sector) acc[e.sector] = (acc[e.sector] || 0) + 1;
     return acc;
   }, {});
-  const pieData = Object.entries(sectorCount).map(([name, value]) => ({ name, value }));
+  const pieData = Object.entries(sectorCount)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => (b.value as number) - (a.value as number))
+    .slice(0, 6); // Top 6 sectors
+
+  // Real province distribution from database
+  const provinceCount = enterprises.reduce((acc: Record<string, number>, e) => {
+    if (e.province) acc[e.province] = (acc[e.province] || 0) + 1;
+    return acc;
+  }, {});
+  const provinceData = Object.entries(provinceCount)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => (b.value as number) - (a.value as number))
+    .slice(0, 6);
+
+  // Real monthly registration trend (group by created_at month)
+  const monthlyData = (() => {
+    const months: Record<string, { registrations: number; approvals: number }> = {};
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.toLocaleDateString('fr-FR', { month: 'short' });
+      months[key] = { registrations: 0, approvals: 0 };
+    }
+    
+    enterprises.forEach(e => {
+      if (e.created_at) {
+        const d = new Date(e.created_at);
+        const key = d.toLocaleDateString('fr-FR', { month: 'short' });
+        if (months[key]) months[key].registrations++;
+        if (e.status === 'active' && months[key]) months[key].approvals++;
+      }
+    });
+    
+    return Object.entries(months).map(([month, data]) => ({
+      month,
+      registrations: data.registrations,
+      approvals: data.approvals,
+    }));
+  })();
+
+  // Real compliance scores by month
+  const complianceTrend = (() => {
+    const months: Record<string, number[]> = {};
+    enterprises.forEach(e => {
+      if (e.created_at && e.compliance_score) {
+        const d = new Date(e.created_at);
+        const key = d.toLocaleDateString('fr-FR', { month: 'short' });
+        if (!months[key]) months[key] = [];
+        months[key].push(e.compliance_score);
+      }
+    });
+    
+    const allMonths = Object.keys(months).sort();
+    return allMonths.map(month => ({
+      month,
+      score: months[month].length > 0 
+        ? Math.round(months[month].reduce((a, b) => a + b, 0) / months[month].length) 
+        : 0,
+    }));
+  })();
+
+  const activeEnterprises = enterprises.filter(e => e.status === 'active').length;
+  const pendingApprovals = enterprises.filter(e => e.status === 'pending').length;
+  const activeTenders = tenders.filter(t => t.status === 'open').length;
+  const activeContracts = contracts.filter(c => c.status === 'active').length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-12 h-12 border-4 border-[#1a237e] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold text-[#0a2540]">Analytics & Reporting ARSP</h2>
+        <div className="flex items-center gap-3">
+          <img src="/arsp_logo_enhanced_final.png" alt="ARSP" className="h-10 w-auto" />
+          <h2 className="text-2xl font-bold text-[#1a237e]">Tableau de Bord ARSP</h2>
+        </div>
         <div className="flex gap-2">
           <select
             value={dateRange}
@@ -82,7 +127,7 @@ export function Analytics() {
             <option value="30jours">30 derniers jours</option>
             <option value="12mois">12 derniers mois</option>
           </select>
-          <button className="flex items-center gap-2 px-4 py-2 bg-[#0a2540] text-white rounded-lg text-sm font-medium hover:bg-[#0d2f4f]">
+          <button className="flex items-center gap-2 px-4 py-2 bg-[#1a237e] text-white rounded-lg text-sm font-medium hover:bg-[#0d1642]">
             <Download className="w-4 h-4" />
             Exporter CSV
           </button>
@@ -91,48 +136,42 @@ export function Analytics() {
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-xl p-5 card-shadow">
+        <div className="bg-white rounded-xl p-5 card-shadow border-l-4 border-[#1a237e]">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-500">Entreprises enregistrees</span>
-            <Users className="w-5 h-5 text-[#007FFF]" />
+            <Users className="w-5 h-5 text-[#1a237e]" />
           </div>
-          <div className="text-2xl font-bold text-[#0a2540]">{enterprises.length}</div>
+          <div className="text-2xl font-bold text-[#1a237e]">{enterprises.length}</div>
           <div className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
-            <TrendingUp className="w-3 h-3" />donnees en temps reel
+            <TrendingUp className="w-3 h-3" />{activeEnterprises} agreees
           </div>
         </div>
-        <div className="bg-white rounded-xl p-5 card-shadow">
+        <div className="bg-white rounded-xl p-5 card-shadow border-l-4 border-[#FFCD00]">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-500">Agrements en attente</span>
-            <FileCheck className="w-5 h-5 text-[#007FFF]" />
+            <FileCheck className="w-5 h-5 text-[#FFCD00]" />
           </div>
-          <div className="text-2xl font-bold text-[#0a2540]">
-            {enterprises.filter(e => e.status === 'pending').length}
-          </div>
+          <div className="text-2xl font-bold text-[#1a237e]">{pendingApprovals}</div>
           <div className="text-xs text-amber-600 flex items-center gap-1 mt-1">
             <AlertTriangle className="w-3 h-3" />en attente de validation
           </div>
         </div>
-        <div className="bg-white rounded-xl p-5 card-shadow">
+        <div className="bg-white rounded-xl p-5 card-shadow border-l-4 border-[#007FFF]">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-500">Appels d'offres actifs</span>
             <Calendar className="w-5 h-5 text-[#007FFF]" />
           </div>
-          <div className="text-2xl font-bold text-[#0a2540]">
-            {tenders.filter(t => t.status === 'open').length}
-          </div>
+          <div className="text-2xl font-bold text-[#1a237e]">{activeTenders}</div>
           <div className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
             <CheckCircle2 className="w-3 h-3" />en cours
           </div>
         </div>
-        <div className="bg-white rounded-xl p-5 card-shadow">
+        <div className="bg-white rounded-xl p-5 card-shadow border-l-4 border-[#10B981]">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-500">Contrats actifs</span>
-            <CheckCircle2 className="w-5 h-5 text-[#007FFF]" />
+            <CheckCircle2 className="w-5 h-5 text-[#10B981]" />
           </div>
-          <div className="text-2xl font-bold text-[#0a2540]">
-            {contracts.filter(c => c.status === 'active').length}
-          </div>
+          <div className="text-2xl font-bold text-[#1a237e]">{activeContracts}</div>
           <div className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
             <TrendingUp className="w-3 h-3" />en execution
           </div>
@@ -142,7 +181,7 @@ export function Analytics() {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white rounded-xl p-5 card-shadow">
-          <h3 className="text-sm font-semibold text-[#0a2540] mb-4">Tendances d'inscription</h3>
+          <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Tendances d'inscription (reel)</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={monthlyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -150,17 +189,24 @@ export function Analytics() {
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="registrations" name="Inscriptions" stroke="#007FFF" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="registrations" name="Inscriptions" stroke="#1a237e" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="approvals" name="Agrements" stroke="#10B981" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
         <div className="bg-white rounded-xl p-5 card-shadow">
-          <h3 className="text-sm font-semibold text-[#0a2540] mb-4">Repartition par secteur</h3>
+          <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition par secteur (reel)</h3>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
-              <Pie data={pieData.length > 0 ? pieData : [{ name: 'Aucune donnee', value: 1 }]} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value">
+              <Pie 
+                data={pieData.length > 0 ? pieData : [{ name: 'Aucune donnee', value: 1 }]} 
+                cx="50%" cy="50%" 
+                innerRadius={60} 
+                outerRadius={90} 
+                paddingAngle={4} 
+                dataKey="value"
+              >
                 {(pieData.length > 0 ? pieData : [{ name: 'Aucune donnee', value: 1 }]).map((_, index) => (
                   <Cell key={index} fill={COLORS[index % COLORS.length]} />
                 ))}
@@ -172,27 +218,27 @@ export function Analytics() {
         </div>
 
         <div className="bg-white rounded-xl p-5 card-shadow">
-          <h3 className="text-sm font-semibold text-[#0a2540] mb-4">Repartition geographique</h3>
+          <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition geographique (reel)</h3>
           <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={provinceData}>
+            <BarChart data={provinceData.length > 0 ? provinceData : [{ name: 'Aucune', value: 0 }]}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip />
-              <Bar dataKey="value" name="Entreprises" fill="#0a2540" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="value" name="Entreprises" fill="#1a237e" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div className="bg-white rounded-xl p-5 card-shadow">
-          <h3 className="text-sm font-semibold text-[#0a2540] mb-4">Evolution conformite (%)</h3>
+          <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Evolution conformite (reel)</h3>
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={complianceTrend}>
+            <LineChart data={complianceTrend.length > 0 ? complianceTrend : [{ month: '-', score: 0 }]}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis domain={[60, 100]} tick={{ fontSize: 12 }} />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
               <Tooltip />
-              <Line type="monotone" dataKey="score" name="Score moyen" stroke="#FFD700" strokeWidth={2} />
+              <Line type="monotone" dataKey="score" name="Score moyen" stroke="#FFCD00" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -200,8 +246,9 @@ export function Analytics() {
 
       {/* Data Table */}
       <div className="bg-white rounded-xl card-shadow overflow-hidden">
-        <div className="p-4 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-[#0a2540]">Entreprises enregistrees</h3>
+        <div className="p-4 border-b border-gray-100 flex items-center gap-2">
+          <img src="/arsp_logo_enhanced_final.png" alt="ARSP" className="h-6 w-auto" />
+          <h3 className="text-sm font-semibold text-[#1a237e]">Entreprises enregistrees</h3>
         </div>
         {enterprises.length === 0 ? (
           <div className="p-8 text-center text-gray-400">Aucune entreprise enregistree</div>
@@ -210,17 +257,17 @@ export function Analytics() {
             <table className="w-full text-sm">
               <thead className="bg-[#F6F9FC]">
                 <tr>
-                  <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Entreprise</th>
-                  <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Secteur</th>
-                  <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Province</th>
-                  <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Capital %</th>
-                  <th className="text-left px-4 py-3 font-semibold text-[#0a2540]">Statut</th>
+                  <th className="text-left px-4 py-3 font-semibold text-[#1a237e]">Entreprise</th>
+                  <th className="text-left px-4 py-3 font-semibold text-[#1a237e]">Secteur</th>
+                  <th className="text-left px-4 py-3 font-semibold text-[#1a237e]">Province</th>
+                  <th className="text-left px-4 py-3 font-semibold text-[#1a237e]">Capital %</th>
+                  <th className="text-left px-4 py-3 font-semibold text-[#1a237e]">Statut</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {enterprises.map((e) => (
+                {enterprises.slice(0, 20).map((e) => (
                   <tr key={e.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-[#0a2540]">{e.name}</td>
+                    <td className="px-4 py-3 font-medium text-[#1a237e]">{e.name}</td>
                     <td className="px-4 py-3 text-gray-600">{e.sector}</td>
                     <td className="px-4 py-3 text-gray-600">{e.province}</td>
                     <td className="px-4 py-3 text-gray-600">{e.congolese_capital}%</td>
@@ -237,6 +284,11 @@ export function Analytics() {
                 ))}
               </tbody>
             </table>
+            {enterprises.length > 20 && (
+              <div className="p-3 text-center text-xs text-gray-400">
+                ...et {enterprises.length - 20} autres entreprises
+              </div>
+            )}
           </div>
         )}
       </div>
