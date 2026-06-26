@@ -185,10 +185,11 @@ export function RegistrationRequest() {
     });
 
     if (enterpriseError) {
-      setError('Erreur sauvegarde entreprise');
-      setUploading(false);
-      return;
-    }
+  console.error('Enterprise insert error:', enterpriseError);
+  setError(`Erreur: ${enterpriseError.message}`);
+  setUploading(false);
+  return;
+}
 
     setSubmitted(true);
     setUploading(false);
