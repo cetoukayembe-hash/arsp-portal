@@ -62,11 +62,16 @@ export function Declarations() {
 
   async function fetchPrimeDetails() {
     if (!auth.userId) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('enterprises')
       .select('name, email')
       .eq('user_id', auth.userId)
-      .single();
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error fetching prime details:', error);
+    }
+    
     if (data) {
       setPrimeDetails({ name: data.name, email: data.email });
       setNewDeclaration(prev => ({ ...prev, prime_name: data.name }));
@@ -746,8 +751,16 @@ export function Declarations() {
               ) : (
                 <div className="text-center py-8 bg-gray-50 rounded-xl">
                   <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">Aucune ligne de declaration trouvee</p>
-                  <p className="text-xs text-gray-400 mt-1">ID: {selectedDeclaration.id}</p>
+                  <p className="text-sm text-gray-400">Aucune ligne de declaration</p>
+                  <p className="text-xs text-gray-400 mt-1">Cette declaration ne contient aucun paiement declare.</p>
+                  {auth.userRole === "prime" && selectedDeclaration.status === "draft" && (
+                    <button 
+                      onClick={() => { setSelectedDeclaration(null); setShowNew(true); }}
+                      className="mt-3 text-xs text-[#007FFF] hover:underline"
+                    >
+                      Modifier la declaration
+                    </button>
+                  )}
                 </div>
               )}
 
