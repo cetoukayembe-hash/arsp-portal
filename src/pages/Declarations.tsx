@@ -92,15 +92,21 @@ export function Declarations() {
     setLoading(false);
   }
 
-  async function fetchDeclarationLines(declarationId) {
-    const { data } = await supabase.from("declaration_lines").select("*").eq("declaration_id", declarationId);
+    async function fetchDeclarationLines(declarationId) {
+    console.log('Fetching lines for declaration:', declarationId);
+    const { data, error } = await supabase
+      .from("declaration_lines")
+      .select("*")
+      .eq("declaration_id", declarationId);
+    
+    if (error) {
+      console.error('Error fetching lines:', error);
+    } else {
+      console.log('Lines fetched:', data?.length || 0, data);
+    }
+    
     if (data) setDeclarationLines(data);
   }
-
-  async function exportToExcel() {
-    const { data: allDecl } = await supabase.from("declarations").select("*").order("created_at", { ascending: false });
-    const { data: allLines } = await supabase.from("declaration_lines").select("*");
-    if (!allDecl || !allLines) return;
 
     const rows = [];
     allDecl.forEach(d => {
