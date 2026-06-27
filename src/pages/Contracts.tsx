@@ -1,7 +1,21 @@
 import { useState, useEffect } from 'react';
-import { FileText, Plus, X, CheckCircle2, Clock, AlertTriangle, Download } from 'lucide-react';
+import { FileText, Plus, X, CheckCircle2, Clock, AlertTriangle, Download, Search, Building2, Mail, Hash, MapPin, Briefcase } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/App';
+
+type DocumentType = 'contract' | 'purchase_order';
+
+interface SubcontractorOption {
+  id: string;
+  name: string;
+  email: string;
+  rccm: string;
+  id_national: string;
+  tax_number: string;
+  province: string;
+  sector: string;
+  congolese_capital: number;
+}
 
 export function Contracts() {
   const auth = useAuth();
@@ -11,13 +25,24 @@ export function Contracts() {
   const [selectedContract, setSelectedContract] = useState<any | null>(null);
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [docUrl, setDocUrl] = useState('');
+
+  // New form state
+  const [documentType, setDocumentType] = useState<DocumentType>('contract');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [subcontractors, setSubcontractors] = useState<SubcontractorOption[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [selectedSubcontractor, setSelectedSubcontractor] = useState<SubcontractorOption | null>(null);
+  const [manualEntry, setManualEntry] = useState(false);
+
   const [newContract, setNewContract] = useState({
     title: '', reference: '', subcontractor_email: '',
-    value: '', start_date: '', end_date: '', description: '',
+    subcontractor_name: '', subcontractor_rccm: '', subcontractor_idnat: '',
+    subcontractor_tax_number: '', subcontractor_province: '', subcontractor_sector: '',
+    value: '', start_date: '', end_date: '', delivery_date: '', description: '',
+    items: '', // For PO items/services
   });
 
   useEffect(() => { fetchContracts(); }, []);
-
   useEffect(() => {
     if (selectedContract) {
       setDocUrl(selectedContract.document_url || '');
@@ -34,25 +59,78 @@ export function Contracts() {
     setLoading(false);
   }
 
-    async function handleCreateContract() {
-    console.log('Creating contract...', newContract);
+  // Search subcontractors from registered enterprises
+  async function searchSubcontractors(query: string) {
+    if (query.length < 2) {
+      setSubcontractors([]);
+      setShowSearchResults(false);
+      return;
+    }
     
+    const { data } = await supabase
+      .from('enterprises')
+      .select('id, name, email, rccm, id_national, tax_number, province, sector, congolese_capital')
+      .ilike('name', `%${query}%`)
+      .eq('status', 'active')
+      .limit(5);
+    
+    if (data) {
+      setSubcontractors(data);
+      setShowSearchResults(true);
+    }
+  }
+
+  function selectSubcontractor(sub: SubcontractorOption) {
+    setSelectedSubcontractor(sub);
+    setNewContract(prev => ({
+      ...prev,
+      subcontractor_email: sub.email,
+      subcontractor_name: sub.name,
+      subcontractor_rccm: sub.rccm || '',
+      subcontractor_idnat: sub.id_national || '',
+      subcontractor_tax_number: sub.tax_number || '',
+      subcontractor_province: sub.province || '',
+      subcontractor_sector: sub.sector || '',
+    }));
+    setSearchQuery(sub.name);
+    setShowSearchResults(false);
+    setManualEntry(false);
+  }
+
+  function clearSubcontractor() {
+    setSelectedSubcontractor(null);
+    setSearchQuery('');
+    setNewContract(prev => ({
+      ...prev,
+      subcontractor_email: '', subcontractor_name: '', subcontractor_rccm: '',
+      subcontractor_idnat: '', subcontractor_tax_number: '', subcontractor_province: '',
+      subcontractor_sector: '',
+    }));
+  }
+
+  async function handleCreateContract() {
     // Validation
-    if (!newContract.title || !newContract.subcontractor_email || !newContract.value) {
-      alert('Veuillez remplir tous les champs obligatoires: Titre, Email sous-traitant, Valeur');
+    if (!newContract.title) {
+      alert('Veuillez entrer un titre');
+      return;
+    }
+    if (!newContract.subcontractor_email) {
+      alert('Veuillez selectionner ou entrer un sous-traitant');
+      return;
+    }
+    if (!newContract.value || parseFloat(newContract.value) <= 0) {
+      alert('Veuillez entrer une valeur valide');
       return;
     }
 
     let fileUrl = '';
     if (contractFile) {
-      console.log('Uploading file...', contractFile.name);
-      const fileName = 'contracts/' + Date.now() + '_' + contractFile.name;
+      const fileName = `${documentType}s/` + Date.now() + '_' + contractFile.name;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('documents')
         .upload(fileName, contractFile);
       
       if (uploadError) {
-        console.error('Upload error:', uploadError);
         alert('Erreur upload: ' + uploadError.message);
         return;
       }
@@ -62,47 +140,58 @@ export function Contracts() {
           .from('documents')
           .getPublicUrl(fileName);
         fileUrl = urlData.publicUrl;
-        console.log('File uploaded:', fileUrl);
       }
     }
 
-    const contractData = {
+    const insertData: any = {
       title: newContract.title,
-      reference: newContract.reference || 'CONT-' + Date.now(),
+      reference: newContract.reference || `${documentType.toUpperCase()}-${Date.now()}`,
       subcontractor_email: newContract.subcontractor_email,
+      subcontractor_name: newContract.subcontractor_name,
+      subcontractor_rccm: newContract.subcontractor_rccm,
+      subcontractor_idnat: newContract.subcontractor_idnat,
+      subcontractor_tax_number: newContract.subcontractor_tax_number,
+      subcontractor_province: newContract.subcontractor_province,
+      subcontractor_sector: newContract.subcontractor_sector,
       prime_email: auth.userEmail || 'prime@arsp.cd',
       prime_id: auth.userId,
       value: parseFloat(newContract.value),
-      start_date: newContract.start_date,
-      end_date: newContract.end_date,
       description: newContract.description,
       document_url: fileUrl,
+      document_type: documentType,
       status: 'draft',
       progress: 0,
     };
-    
-    console.log('Inserting contract:', contractData);
 
-    const { error } = await supabase.from('contracts').insert([contractData]);
+    // Contract-specific fields
+    if (documentType === 'contract') {
+      insertData.start_date = newContract.start_date;
+      insertData.end_date = newContract.end_date;
+    } else {
+      // PO-specific: delivery date instead of contract period
+      insertData.end_date = newContract.delivery_date;
+    }
+
+    const { error } = await supabase.from('contracts').insert([insertData]);
     
     if (error) {
-      console.error('Contract creation error:', error);
-      alert('Erreur lors de la creation du contrat: ' + error.message);
+      alert('Erreur lors de la creation: ' + error.message);
       return;
     }
-    
-    console.log('Contract created successfully');
+
     setShowCreate(false);
     setContractFile(null);
-    setNewContract({ title: '', reference: '', subcontractor_email: '', value: '', start_date: '', end_date: '', description: '' });
+    setSelectedSubcontractor(null);
+    setSearchQuery('');
+    setManualEntry(false);
+    setNewContract({
+      title: '', reference: '', subcontractor_email: '',
+      subcontractor_name: '', subcontractor_rccm: '', subcontractor_idnat: '',
+      subcontractor_tax_number: '', subcontractor_province: '', subcontractor_sector: '',
+      value: '', start_date: '', end_date: '', delivery_date: '', description: '', items: '',
+    });
     fetchContracts();
   }
-    
-      
-    
-    
-    
-  
 
   async function updateProgress(id: string, progress: number) {
     const { error } = await supabase.from('contracts').update({ progress }).eq('id', id);
@@ -128,17 +217,22 @@ export function Contracts() {
     pending: { label: 'En attente', color: 'bg-amber-100 text-amber-700', icon: Clock },
   };
 
+  const typeConfig: Record<string, { label: string; color: string }> = {
+    contract: { label: 'Contrat', color: 'bg-[#1a237e] text-white' },
+    purchase_order: { label: 'Bon de Commande', color: 'bg-[#FFCD00] text-[#1a237e]' },
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-[#0a2540]">Gestion des Contrats</h2>
+        <h2 className="text-2xl font-bold text-[#0a2540]">Gestion des Contrats & Bons de Commande</h2>
         {auth.userRole === 'prime' && (
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 px-4 py-2 bg-[#0a2540] text-white rounded-lg text-sm font-medium hover:bg-[#0d2f4f]"
           >
             <Plus className="w-4 h-4" />
-            Nouveau contrat
+            Nouveau document
           </button>
         )}
       </div>
@@ -148,10 +242,10 @@ export function Contracts() {
       ) : contracts.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl card-shadow">
           <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">Aucun contrat disponible</p>
+          <p className="text-gray-500 font-medium">Aucun document disponible</p>
           {auth.userRole === 'prime' && (
             <button onClick={() => setShowCreate(true)} className="mt-3 text-sm text-[#007FFF] hover:underline">
-              Creer le premier contrat
+              Creer le premier document
             </button>
           )}
         </div>
@@ -159,6 +253,7 @@ export function Contracts() {
         <div className="space-y-4">
           {contracts.map((c) => {
             const status = statusConfig[c.status] || statusConfig.draft;
+            const type = typeConfig[c.document_type] || typeConfig.contract;
             const Icon = status.icon;
             return (
               <div
@@ -168,67 +263,300 @@ export function Contracts() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="text-lg font-semibold text-[#0a2540]">{c.title}</h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${type.color}`}>
+                        {type.label}
+                      </span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${status.color}`}>
                         {status.label}
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 mb-2">{c.reference}</p>
                     <div className="flex flex-wrap gap-3 text-xs text-gray-500">
-                      {c.value && <span>USD {c.value}</span>}
-                      {c.start_date && <span>Debut: {c.start_date}</span>}
-                      {c.end_date && <span>Fin: {c.end_date}</span>}
-                      {c.subcontractor_email && <span>{c.subcontractor_email}</span>}
+                      {c.value && <span className="font-medium">USD {c.value}</span>}
+                      {c.subcontractor_name && <span>{c.subcontractor_name}</span>}
+                      {c.start_date && c.document_type === 'contract' && <span>Debut: {c.start_date}</span>}
+                      {c.end_date && <span>{c.document_type === 'purchase_order' ? 'Livraison' : 'Fin'}: {c.end_date}</span>}
                     </div>
                   </div>
                   <Icon className="w-5 h-5 text-gray-400 shrink-0" />
                 </div>
-                <div className="mt-3">
-                  <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>Progression</span>
-                    <span>{c.progress}%</span>
+                {c.document_type === 'contract' && (
+                  <div className="mt-3">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Progression</span>
+                      <span>{c.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-1.5">
+                      <div className="bg-[#007FFF] h-1.5 rounded-full" style={{ width: c.progress + '%' }} />
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5">
-                    <div className="bg-[#007FFF] h-1.5 rounded-full" style={{ width: c.progress + '%' }} />
-                  </div>
-                </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
+      {/* Create Modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-[#0a2540]">Nouveau contrat</h3>
+                <h3 className="text-lg font-bold text-[#0a2540]">Nouveau document</h3>
                 <button onClick={() => setShowCreate(false)}><X className="w-5 h-5 text-gray-500" /></button>
               </div>
-              <div className="space-y-3">
-                <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Titre du contrat" value={newContract.title} onChange={(e) => setNewContract({ ...newContract, title: e.target.value })} />
-                <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Reference" value={newContract.reference} onChange={(e) => setNewContract({ ...newContract, reference: e.target.value })} />
-                <input type="email" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Email du sous-traitant" value={newContract.subcontractor_email} onChange={(e) => setNewContract({ ...newContract, subcontractor_email: e.target.value })} />
-                <input type="number" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Valeur USD" value={newContract.value} onChange={(e) => setNewContract({ ...newContract, value: e.target.value })} />
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Date de debut</label>
-                    <input type="date" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" value={newContract.start_date} onChange={(e) => setNewContract({ ...newContract, start_date: e.target.value })} />
+
+              {/* Document Type Toggle */}
+              <div className="flex gap-2 mb-4 p-1 bg-gray-100 rounded-lg">
+                <button
+                  onClick={() => setDocumentType('contract')}
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                    documentType === 'contract' ? 'bg-white text-[#1a237e] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Contrat
+                </button>
+                <button
+                  onClick={() => setDocumentType('purchase_order')}
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                    documentType === 'purchase_order' ? 'bg-white text-[#1a237e] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Bon de Commande
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Title */}
+                <input 
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
+                  placeholder={documentType === 'contract' ? "Titre du contrat" : "Titre du bon de commande"} 
+                  value={newContract.title} 
+                  onChange={(e) => setNewContract({ ...newContract, title: e.target.value })} 
+                />
+
+                {/* Reference */}
+                <input 
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
+                  placeholder="Reference (auto-generee si vide)" 
+                  value={newContract.reference} 
+                  onChange={(e) => setNewContract({ ...newContract, reference: e.target.value })} 
+                />
+
+                {/* Subcontractor Search */}
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-medium text-gray-500">Sous-traitant</label>
+                    <button 
+                      onClick={() => { setManualEntry(!manualEntry); clearSubcontractor(); }}
+                      className="text-xs text-[#007FFF] hover:underline"
+                    >
+                      {manualEntry ? 'Rechercher dans le registre' : 'Saisie manuelle'}
+                    </button>
                   </div>
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Date de fin</label>
-                    <input type="date" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" value={newContract.end_date} onChange={(e) => setNewContract({ ...newContract, end_date: e.target.value })} />
-                  </div>
+
+                  {!manualEntry ? (
+                    <div className="relative">
+                      <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg bg-white">
+                        <Search className="w-4 h-4 text-gray-400" />
+                        <input
+                          className="flex-1 text-sm outline-none"
+                          placeholder="Rechercher une entreprise agreee..."
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            searchSubcontractors(e.target.value);
+                          }}
+                        />
+                        {selectedSubcontractor && (
+                          <button onClick={clearSubcontractor} className="text-gray-400 hover:text-gray-600">
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      
+                      {showSearchResults && subcontractors.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {subcontractors.map((sub) => (
+                            <button
+                              key={sub.id}
+                              onClick={() => selectSubcontractor(sub)}
+                              className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Building2 className="w-4 h-4 text-[#1a237e]" />
+                                <div>
+                                  <div className="text-sm font-medium text-[#0a2540]">{sub.name}</div>
+                                  <div className="text-xs text-gray-500 flex gap-2 mt-0.5">
+                                    <span>{sub.sector}</span>
+                                    <span>{sub.province}</span>
+                                    <span className="text-emerald-600">{sub.congolese_capital}% congolais</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {showSearchResults && searchQuery.length >= 2 && subcontractors.length === 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-sm text-gray-500">
+                          Aucune entreprise trouvee. <button onClick={() => setManualEntry(true)} className="text-[#007FFF] hover:underline">Saisie manuelle</button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <input 
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
+                        placeholder="Nom du sous-traitant" 
+                        value={newContract.subcontractor_name} 
+                        onChange={(e) => setNewContract({ ...newContract, subcontractor_name: e.target.value })} 
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input 
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
+                          placeholder="Email" 
+                          value={newContract.subcontractor_email} 
+                          onChange={(e) => setNewContract({ ...newContract, subcontractor_email: e.target.value })} 
+                        />
+                        <input 
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
+                          placeholder="RCCM" 
+                          value={newContract.subcontractor_rccm} 
+                          onChange={(e) => setNewContract({ ...newContract, subcontractor_rccm: e.target.value })} 
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input 
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
+                          placeholder="ID National" 
+                          value={newContract.subcontractor_idnat} 
+                          onChange={(e) => setNewContract({ ...newContract, subcontractor_idnat: e.target.value })} 
+                        />
+                        <input 
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
+                          placeholder="NIF" 
+                          value={newContract.subcontractor_tax_number} 
+                          onChange={(e) => setNewContract({ ...newContract, subcontractor_tax_number: e.target.value })} 
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input 
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
+                          placeholder="Province" 
+                          value={newContract.subcontractor_province} 
+                          onChange={(e) => setNewContract({ ...newContract, subcontractor_province: e.target.value })} 
+                        />
+                        <input 
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
+                          placeholder="Secteur" 
+                          value={newContract.subcontractor_sector} 
+                          onChange={(e) => setNewContract({ ...newContract, subcontractor_sector: e.target.value })} 
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Selected subcontractor info */}
+                  {selectedSubcontractor && !manualEntry && (
+                    <div className="mt-2 p-3 bg-[#F6F9FC] rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Building2 className="w-4 h-4 text-[#1a237e]" />
+                        <span className="text-sm font-medium text-[#0a2540]">{selectedSubcontractor.name}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-1"><Mail className="w-3 h-3" /> {selectedSubcontractor.email}</div>
+                        <div className="flex items-center gap-1"><Hash className="w-3 h-3" /> RCCM: {selectedSubcontractor.rccm || 'N/A'}</div>
+                        <div className="flex items-center gap-1"><Hash className="w-3 h-3" /> IDNAT: {selectedSubcontractor.id_national || 'N/A'}</div>
+                        <div className="flex items-center gap-1"><Hash className="w-3 h-3" /> NIF: {selectedSubcontractor.tax_number || 'N/A'}</div>
+                        <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {selectedSubcontractor.province || 'N/A'}</div>
+                        <div className="flex items-center gap-1"><Briefcase className="w-3 h-3" /> {selectedSubcontractor.sector || 'N/A'}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <textarea className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF] h-20 resize-none" placeholder="Description" value={newContract.description} onChange={(e) => setNewContract({ ...newContract, description: e.target.value })} />
+
+                {/* Value */}
+                <input 
+                  type="number" 
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
+                  placeholder="Valeur USD" 
+                  value={newContract.value} 
+                  onChange={(e) => setNewContract({ ...newContract, value: e.target.value })} 
+                />
+
+                {/* Dates - different for contract vs PO */}
+                {documentType === 'contract' ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Date de debut</label>
+                      <input 
+                        type="date" 
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
+                        value={newContract.start_date} 
+                        onChange={(e) => setNewContract({ ...newContract, start_date: e.target.value })} 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Date de fin</label>
+                      <input 
+                        type="date" 
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
+                        value={newContract.end_date} 
+                        onChange={(e) => setNewContract({ ...newContract, end_date: e.target.value })} 
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Date de livraison / execution</label>
+                    <input 
+                      type="date" 
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
+                      value={newContract.delivery_date} 
+                      onChange={(e) => setNewContract({ ...newContract, delivery_date: e.target.value })} 
+                    />
+                  </div>
+                )}
+
+                {/* PO Items field */}
+                {documentType === 'purchase_order' && (
+                  <textarea 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF] h-20 resize-none" 
+                    placeholder="Articles / Services commandes (ex: 50 sacs de ciment, transport de materiel...)" 
+                    value={newContract.items} 
+                    onChange={(e) => setNewContract({ ...newContract, items: e.target.value })} 
+                  />
+                )}
+
+                {/* Description */}
+                <textarea 
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF] h-20 resize-none" 
+                  placeholder="Description / Conditions" 
+                  value={newContract.description} 
+                  onChange={(e) => setNewContract({ ...newContract, description: e.target.value })} 
+                />
+
+                {/* Document Upload */}
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Document PDF</label>
-                  <input type="file" accept=".pdf,.doc,.docx" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" onChange={(e) => setContractFile(e.target.files ? e.target.files[0] : null)} />
+                  <input 
+                    type="file" 
+                    accept=".pdf,.doc,.docx" 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" 
+                    onChange={(e) => setContractFile(e.target.files ? e.target.files[0] : null)} 
+                  />
                 </div>
-                <button onClick={handleCreateContract} className="w-full py-2.5 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC]">
-                  Creer le contrat
+
+                <button 
+                  onClick={handleCreateContract} 
+                  className="w-full py-2.5 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC]"
+                >
+                  Creer le {documentType === 'contract' ? 'contrat' : 'bon de commande'}
                 </button>
               </div>
             </div>
@@ -236,29 +564,63 @@ export function Contracts() {
         </div>
       )}
 
+      {/* Contract Detail Modal */}
       {selectedContract && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedContract(null)}>
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-[#0a2540]">{selectedContract.title}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-[#0a2540]">{selectedContract.title}</h3>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${typeConfig[selectedContract.document_type]?.color || typeConfig.contract.color}`}>
+                    {typeConfig[selectedContract.document_type]?.label || 'Contrat'}
+                  </span>
+                </div>
                 <button onClick={() => setSelectedContract(null)}><X className="w-5 h-5 text-gray-500" /></button>
               </div>
               <div className="space-y-3">
                 <div className="bg-[#F6F9FC] rounded-lg p-4 grid grid-cols-2 gap-3 text-sm">
                   <div><span className="text-gray-500">Reference</span><p className="font-medium text-[#0a2540]">{selectedContract.reference}</p></div>
-                  <div><span className="text-gray-500">Statut</span><p className="font-medium text-[#0a2540]">{statusConfig[selectedContract.status] ? statusConfig[selectedContract.status].label : 'Inconnu'}</p></div>
+                  <div><span className="text-gray-500">Statut</span><p className="font-medium text-[#0a2540]">{statusConfig[selectedContract.status]?.label || 'Inconnu'}</p></div>
                   <div><span className="text-gray-500">Valeur</span><p className="font-medium text-[#0a2540]">USD {selectedContract.value}</p></div>
-                  <div><span className="text-gray-500">Sous-traitant</span><p className="font-medium text-[#0a2540]">{selectedContract.subcontractor_email}</p></div>
-                  <div><span className="text-gray-500">Debut</span><p className="font-medium text-[#0a2540]">{selectedContract.start_date}</p></div>
-                  <div><span className="text-gray-500">Fin</span><p className="font-medium text-[#0a2540]">{selectedContract.end_date}</p></div>
+                  <div><span className="text-gray-500">Sous-traitant</span><p className="font-medium text-[#0a2540]">{selectedContract.subcontractor_name || selectedContract.subcontractor_email}</p></div>
+                  {selectedContract.start_date && selectedContract.document_type === 'contract' && (
+                    <div><span className="text-gray-500">Debut</span><p className="font-medium text-[#0a2540]">{selectedContract.start_date}</p></div>
+                  )}
+                  {selectedContract.end_date && (
+                    <div><span className="text-gray-500">{selectedContract.document_type === 'purchase_order' ? 'Livraison' : 'Fin'}</span><p className="font-medium text-[#0a2540]">{selectedContract.end_date}</p></div>
+                  )}
                 </div>
+
+                {/* Subcontractor details if available */}
+                {(selectedContract.subcontractor_rccm || selectedContract.subcontractor_idnat) && (
+                  <div className="bg-[#F6F9FC] rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-[#0a2540] mb-2">Details du sous-traitant</h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                      {selectedContract.subcontractor_rccm && <div>RCCM: {selectedContract.subcontractor_rccm}</div>}
+                      {selectedContract.subcontractor_idnat && <div>IDNAT: {selectedContract.subcontractor_idnat}</div>}
+                      {selectedContract.subcontractor_tax_number && <div>NIF: {selectedContract.subcontractor_tax_number}</div>}
+                      {selectedContract.subcontractor_province && <div>Province: {selectedContract.subcontractor_province}</div>}
+                      {selectedContract.subcontractor_sector && <div>Secteur: {selectedContract.subcontractor_sector}</div>}
+                    </div>
+                  </div>
+                )}
+
                 {selectedContract.description && (
                   <div className="bg-[#F6F9FC] rounded-lg p-4">
                     <p className="text-sm text-gray-600">{selectedContract.description}</p>
                   </div>
                 )}
-                {auth.userRole === 'prime' && (
+
+                {selectedContract.items && (
+                  <div className="bg-[#F6F9FC] rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-[#0a2540] mb-1">Articles / Services</h4>
+                    <p className="text-sm text-gray-600">{selectedContract.items}</p>
+                  </div>
+                )}
+
+                {/* Progress - only for contracts */}
+                {selectedContract.document_type === 'contract' && auth.userRole === 'prime' && (
                   <div className="bg-[#F6F9FC] rounded-lg p-4">
                     <label className="text-sm font-medium text-[#0a2540] mb-2 block">
                       Progression: {selectedContract.progress}%
@@ -278,6 +640,7 @@ export function Contracts() {
                     </div>
                   </div>
                 )}
+
                 {auth.userRole === 'prime' && (
                   <select
                     value={selectedContract.status}
@@ -290,7 +653,8 @@ export function Contracts() {
                     <option value="disputed">Litige</option>
                   </select>
                 )}
-                {docUrl !== '' && (
+
+                {docUrl && (
                   <a href={docUrl} target="_blank" rel="noopener noreferrer" className="w-full py-2.5 bg-[#0a2540] text-white rounded-lg font-semibold hover:bg-[#0d2f4f] flex items-center justify-center gap-2">
                     <Download className="w-4 h-4" />
                     Telecharger le document
