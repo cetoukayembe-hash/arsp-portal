@@ -264,11 +264,14 @@ export function Analytics() {
     
 
   // PDF Export
-    const handleExportPDF = async () => {
+      const handleExportPDF = async () => {
     if (!reportRef.current) return;
     
     try {
       const element = reportRef.current;
+      const originalHeight = element.style.height;
+      element.style.height = 'auto';
+      
       const canvas = await html2canvas(element, {
         scale: 2,
         backgroundColor: '#ffffff',
@@ -276,7 +279,10 @@ export function Analytics() {
         logging: false,
         height: element.scrollHeight,
         windowHeight: element.scrollHeight,
+        y: 0,
       });
+      
+      element.style.height = originalHeight;
       
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -284,22 +290,21 @@ export function Analytics() {
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-      const imgX = (pdfWidth - imgWidth * ratio) / 2;
-      let imgY = 0;
+      const ratio = pdfWidth / imgWidth;
+      const scaledHeight = imgHeight * ratio;
       
-      let heightLeft = imgHeight;
+      let heightLeft = scaledHeight;
       let position = 0;
       
       // Add first page
-      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, scaledHeight);
       heightLeft -= pdfHeight;
       
       // Add additional pages if content overflows
       while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
+        position = heightLeft - scaledHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', imgX, position, imgWidth * ratio, imgHeight * ratio);
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, scaledHeight);
         heightLeft -= pdfHeight;
       }
       
@@ -309,6 +314,16 @@ export function Analytics() {
       alert('Erreur lors de l\'export PDF');
     }
   };
+    
+    
+    
+        
+      
+      
+      
+      
+      
+     
     
     
     
@@ -331,7 +346,12 @@ export function Analytics() {
             className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white outline-none"
           >
             <option value="7jours">7 derniers jours</option>
-            <option value="30jours">30 derniers jours</option>
+            <o// Add additional pages if content overflows
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', imgX, position, imgWidth * ratio, imgHeight * ratio);
+        heightLption value="30jours">30 derniers jours</option>
             <option value="12mois">12 derniers mois</option>
           </select>
           <button 
