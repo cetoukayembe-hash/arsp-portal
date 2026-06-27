@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Plus, X, CheckCircle2, Clock, AlertTriangle, Download, Search, Building2, Mail, Hash, MapPin, Briefcase } from 'lucide-react';
+import { FileText, Plus, X, CheckCircle2, Clock, AlertTriangle, Download, Search, Building2, Mail, Hash, MapPin, Briefcase, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/App';
 
@@ -17,6 +17,16 @@ interface SubcontractorOption {
   congolese_capital: number;
 }
 
+interface PrimeDetails {
+  name: string;
+  email: string;
+  rccm: string;
+  idnat: string;
+  tax_number: string;
+  province: string;
+  sector: string;
+}
+
 export function Contracts() {
   const auth = useAuth();
   const [contracts, setContracts] = useState<any[]>([]);
@@ -25,6 +35,7 @@ export function Contracts() {
   const [selectedContract, setSelectedContract] = useState<any | null>(null);
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [docUrl, setDocUrl] = useState('');
+  const [primeDetails, setPrimeDetails] = useState<PrimeDetails | null>(null);
 
   // New form state
   const [documentType, setDocumentType] = useState<DocumentType>('contract');
@@ -39,22 +50,56 @@ export function Contracts() {
     subcontractor_name: '', subcontractor_rccm: '', subcontractor_idnat: '',
     subcontractor_tax_number: '', subcontractor_province: '', subcontractor_sector: '',
     value: '', start_date: '', end_date: '', delivery_date: '', description: '',
-    items: '', // For PO items/services
+    items: '',
   });
 
-  useEffect(() => { fetchContracts(); }, []);
+  useEffect(() => { 
+    fetchContracts(); 
+    fetchPrimeDetails(); 
+  }, []);
+
   useEffect(() => {
     if (selectedContract) {
       setDocUrl(selectedContract.document_url || '');
     }
   }, [selectedContract]);
 
+  async function fetchPrimeDetails() {
+    if (!auth.userId) return;
+    
+    const { data } = await supabase
+      .from('enterprises')
+      .select('name, email, rccm, id_national, tax_number, province, sector')
+      .eq('user_id', auth.userId)
+      .single();
+    
+    if (data) {
+      setPrimeDetails({
+        name: data.name,
+        email: data.email,
+        rccm: data.rccm || '',
+        idnat: data.id_national || '',
+        tax_number: data.tax_number || '',
+        province: data.province || '',
+        sector: data.sector || '',
+      });
+    }
+  }
+
   async function fetchContracts() {
     setLoading(true);
-    const { data } = await supabase
-      .from('contracts')
-      .select('*')
-      .order('created_at', { ascending: false });
+    
+    // For subcontractors, fetch contracts where they are the subcontractor
+    // For primes, fetch contracts where they are the prime
+    let query = supabase.from('contracts').select('*').order('created_at', { ascending: false });
+    
+    if (auth.userRole === 'subcontractor') {
+      query = query.eq('subcontractor_email', auth.userEmail);
+    } else if (auth.userRole === 'prime') {
+      query = query.eq('prime_id', auth.userId);
+    }
+    
+    const { data } = await query;
     if (data) setContracts(data);
     setLoading(false);
   }
@@ -109,6 +154,11 @@ export function Contracts() {
   }
 
   async function handleCreateContract() {
+    if (!primeDetails) {
+      alert('Veuillez d\'abord completer votre profil entreprise');
+      return;
+    }
+
     // Validation
     if (!newContract.title) {
       alert('Veuillez entrer un titre');
@@ -153,8 +203,14 @@ export function Contracts() {
       subcontractor_tax_number: newContract.subcontractor_tax_number,
       subcontractor_province: newContract.subcontractor_province,
       subcontractor_sector: newContract.subcontractor_sector,
-      prime_email: auth.userEmail || 'prime@arsp.cd',
+      prime_email: primeDetails.email,
       prime_id: auth.userId,
+      prime_name: primeDetails.name,
+      prime_rccm: primeDetails.rccm,
+      prime_idnat: primeDetails.idnat,
+      prime_tax_number: primeDetails.tax_number,
+      prime_province: primeDetails.province,
+      prime_sector: primeDetails.sector,
       value: parseFloat(newContract.value),
       description: newContract.description,
       document_url: fileUrl,
@@ -163,12 +219,10 @@ export function Contracts() {
       progress: 0,
     };
 
-    // Contract-specific fields
     if (documentType === 'contract') {
       insertData.start_date = newContract.start_date;
       insertData.end_date = newContract.end_date;
     } else {
-      // PO-specific: delivery date instead of contract period
       insertData.end_date = newContract.delivery_date;
     }
 
@@ -222,10 +276,153 @@ export function Contracts() {
     purchase_order: { label: 'Bon de Commande', color: 'bg-[#FFCD00] text-[#1a237e]' },
   };
 
+  // Render details based on viewer role
+  function renderContractDetails(contract: any) {
+    const isSubcontractor = auth.userRole === 'subcontractor';
+    
+    if (isSubcontractor) {
+      // Subcontractor sees PRIME company details (who hired them)
+      return (
+        <div className="space-y-3">
+          <div className="bg-[#F6F9FC] rounded-lg p-4 grid grid-cols-2 gap-3 text-sm">
+            <div><span className="text-gray-500">Reference</span><p className="font-medium text-[#0a2540]">{contract.reference}</p></div>
+            <div><span className="text-gray-500">Statut</span><p className="font-medium text-[#0a2540]">{statusConfig[contract.status]?.label || 'Inconnu'}</p></div>
+            <div><span className="text-gray-500">Valeur</span><p className="font-medium text-[#0a2540]">USD {contract.value}</p></div>
+            <div><span className="text-gray-500">Type</span><p className="font-medium text-[#0a2540]">{typeConfig[contract.document_type]?.label || 'Contrat'}</p></div>
+            {contract.start_date && contract.document_type === 'contract' && (
+              <div><span className="text-gray-500">Debut</span><p className="font-medium text-[#0a2540]">{contract.start_date}</p></div>
+            )}
+            {contract.end_date && (
+              <div><span className="text-gray-500">{contract.document_type === 'purchase_order' ? 'Livraison' : 'Fin'}</span><p className="font-medium text-[#0a2540]">{contract.end_date}</p></div>
+            )}
+          </div>
+
+          {/* Prime company details */}
+          <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+            <h4 className="text-sm font-semibold text-[#1a237e] mb-3 flex items-center gap-2">
+              <Building2 className="w-4 h-4" />
+              Entreprise mandante (Prime)
+            </h4>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <User className="w-4 h-4 text-gray-400" />
+                <span className="font-medium text-[#0a2540]">{contract.prime_name || 'Non specifie'}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                {contract.prime_email && <div className="flex items-center gap-1"><Mail className="w-3 h-3" /> {contract.prime_email}</div>}
+                {contract.prime_rccm && <div className="flex items-center gap-1"><Hash className="w-3 h-3" /> RCCM: {contract.prime_rccm}</div>}
+                {contract.prime_idnat && <div className="flex items-center gap-1"><Hash className="w-3 h-3" /> IDNAT: {contract.prime_idnat}</div>}
+                {contract.prime_tax_number && <div className="flex items-center gap-1"><Hash className="w-3 h-3" /> NIF: {contract.prime_tax_number}</div>}
+                {contract.prime_province && <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {contract.prime_province}</div>}
+                {contract.prime_sector && <div className="flex items-center gap-1"><Briefcase className="w-3 h-3" /> {contract.prime_sector}</div>}
+              </div>
+            </div>
+          </div>
+
+          {/* Progress for contracts */}
+          {contract.document_type === 'contract' && (
+            <div className="bg-[#F6F9FC] rounded-lg p-4">
+              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <span>Progression du contrat</span>
+                <span className="font-medium">{contract.progress}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-[#007FFF] h-2 rounded-full transition-all" style={{ width: contract.progress + '%' }} />
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    } else {
+      // Prime sees SUBCONTRACTOR details (who they hired)
+      return (
+        <div className="space-y-3">
+          <div className="bg-[#F6F9FC] rounded-lg p-4 grid grid-cols-2 gap-3 text-sm">
+            <div><span className="text-gray-500">Reference</span><p className="font-medium text-[#0a2540]">{contract.reference}</p></div>
+            <div><span className="text-gray-500">Statut</span><p className="font-medium text-[#0a2540]">{statusConfig[contract.status]?.label || 'Inconnu'}</p></div>
+            <div><span className="text-gray-500">Valeur</span><p className="font-medium text-[#0a2540]">USD {contract.value}</p></div>
+            <div><span className="text-gray-500">Sous-traitant</span><p className="font-medium text-[#0a2540]">{contract.subcontractor_name || contract.subcontractor_email}</p></div>
+            {contract.start_date && contract.document_type === 'contract' && (
+              <div><span className="text-gray-500">Debut</span><p className="font-medium text-[#0a2540]">{contract.start_date}</p></div>
+            )}
+            {contract.end_date && (
+              <div><span className="text-gray-500">{contract.document_type === 'purchase_order' ? 'Livraison' : 'Fin'}</span><p className="font-medium text-[#0a2540]">{contract.end_date}</p></div>
+            )}
+          </div>
+
+          {/* Subcontractor details */}
+          {(contract.subcontractor_rccm || contract.subcontractor_idnat) && (
+            <div className="bg-[#F6F9FC] rounded-lg p-4">
+              <h4 className="text-sm font-medium text-[#0a2540] mb-2">Details du sous-traitant</h4>
+              <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                {contract.subcontractor_rccm && <div>RCCM: {contract.subcontractor_rccm}</div>}
+                {contract.subcontractor_idnat && <div>IDNAT: {contract.subcontractor_idnat}</div>}
+                {contract.subcontractor_tax_number && <div>NIF: {contract.subcontractor_tax_number}</div>}
+                {contract.subcontractor_province && <div>Province: {contract.subcontractor_province}</div>}
+                {contract.subcontractor_sector && <div>Secteur: {contract.subcontractor_sector}</div>}
+              </div>
+            </div>
+          )}
+
+          {contract.description && (
+            <div className="bg-[#F6F9FC] rounded-lg p-4">
+              <p className="text-sm text-gray-600">{contract.description}</p>
+            </div>
+          )}
+
+          {contract.items && (
+            <div className="bg-[#F6F9FC] rounded-lg p-4">
+              <h4 className="text-sm font-medium text-[#0a2540] mb-1">Articles / Services</h4>
+              <p className="text-sm text-gray-600">{contract.items}</p>
+            </div>
+          )}
+
+          {/* Progress control - only for primes viewing contracts */}
+          {contract.document_type === 'contract' && auth.userRole === 'prime' && (
+            <div className="bg-[#F6F9FC] rounded-lg p-4">
+              <label className="text-sm font-medium text-[#0a2540] mb-2 block">
+                Progression: {contract.progress}%
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={contract.progress}
+                onChange={(e) => updateProgress(contract.id, parseInt(e.target.value))}
+                className="w-full accent-[#007FFF]"
+              />
+              <div className="flex justify-between text-xs text-gray-400 mt-1">
+                <span>0%</span>
+                <span>50%</span>
+                <span>100%</span>
+              </div>
+            </div>
+          )}
+
+          {/* Status control - only for primes */}
+          {auth.userRole === 'prime' && (
+            <select
+              value={contract.status}
+              onChange={(e) => updateStatus(contract.id, e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]"
+            >
+              <option value="draft">Brouillon</option>
+              <option value="active">Actif</option>
+              <option value="completed">Termine</option>
+              <option value="disputed">Litige</option>
+            </select>
+          )}
+        </div>
+      );
+    }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-[#0a2540]">Gestion des Contrats & Bons de Commande</h2>
+        <h2 className="text-2xl font-bold text-[#0a2540]">
+          {auth.userRole === 'subcontractor' ? 'Mes Contrats & Bons de Commande' : 'Gestion des Contrats & Bons de Commande'}
+        </h2>
         {auth.userRole === 'prime' && (
           <button
             onClick={() => setShowCreate(true)}
@@ -242,7 +439,11 @@ export function Contracts() {
       ) : contracts.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl card-shadow">
           <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">Aucun document disponible</p>
+          <p className="text-gray-500 font-medium">
+            {auth.userRole === 'subcontractor' 
+              ? 'Aucun contrat ou bon de commande recu' 
+              : 'Aucun document disponible'}
+          </p>
           {auth.userRole === 'prime' && (
             <button onClick={() => setShowCreate(true)} className="mt-3 text-sm text-[#007FFF] hover:underline">
               Creer le premier document
@@ -255,6 +456,12 @@ export function Contracts() {
             const status = statusConfig[c.status] || statusConfig.draft;
             const type = typeConfig[c.document_type] || typeConfig.contract;
             const Icon = status.icon;
+            
+            // Show different info in list based on role
+            const counterpartyName = auth.userRole === 'subcontractor' 
+              ? (c.prime_name || c.prime_email) 
+              : (c.subcontractor_name || c.subcontractor_email);
+            
             return (
               <div
                 key={c.id}
@@ -275,8 +482,7 @@ export function Contracts() {
                     <p className="text-sm text-gray-500 mb-2">{c.reference}</p>
                     <div className="flex flex-wrap gap-3 text-xs text-gray-500">
                       {c.value && <span className="font-medium">USD {c.value}</span>}
-                      {c.subcontractor_name && <span>{c.subcontractor_name}</span>}
-                      {c.start_date && c.document_type === 'contract' && <span>Debut: {c.start_date}</span>}
+                      <span>{auth.userRole === 'subcontractor' ? 'De' : 'A'}: {counterpartyName}</span>
                       {c.end_date && <span>{c.document_type === 'purchase_order' ? 'Livraison' : 'Fin'}: {c.end_date}</span>}
                     </div>
                   </div>
@@ -299,8 +505,8 @@ export function Contracts() {
         </div>
       )}
 
-      {/* Create Modal */}
-      {showCreate && (
+      {/* Create Modal - only for primes */}
+      {showCreate && auth.userRole === 'prime' && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
           <div className="bg-white rounded-2xl max-w-2xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
@@ -330,7 +536,15 @@ export function Contracts() {
               </div>
 
               <div className="space-y-4">
-                {/* Title */}
+                {/* Prime company info display */}
+                {primeDetails && (
+                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                    <div className="text-xs text-gray-500 mb-1">Votre entreprise (mandante)</div>
+                    <div className="text-sm font-medium text-[#0a2540]">{primeDetails.name}</div>
+                    <div className="text-xs text-gray-500">{primeDetails.email}</div>
+                  </div>
+                )}
+
                 <input 
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
                   placeholder={documentType === 'contract' ? "Titre du contrat" : "Titre du bon de commande"} 
@@ -338,7 +552,6 @@ export function Contracts() {
                   onChange={(e) => setNewContract({ ...newContract, title: e.target.value })} 
                 />
 
-                {/* Reference */}
                 <input 
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
                   placeholder="Reference (auto-generee si vide)" 
@@ -461,7 +674,6 @@ export function Contracts() {
                     </div>
                   )}
 
-                  {/* Selected subcontractor info */}
                   {selectedSubcontractor && !manualEntry && (
                     <div className="mt-2 p-3 bg-[#F6F9FC] rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
@@ -480,7 +692,6 @@ export function Contracts() {
                   )}
                 </div>
 
-                {/* Value */}
                 <input 
                   type="number" 
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" 
@@ -489,7 +700,6 @@ export function Contracts() {
                   onChange={(e) => setNewContract({ ...newContract, value: e.target.value })} 
                 />
 
-                {/* Dates - different for contract vs PO */}
                 {documentType === 'contract' ? (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -523,7 +733,6 @@ export function Contracts() {
                   </div>
                 )}
 
-                {/* PO Items field */}
                 {documentType === 'purchase_order' && (
                   <textarea 
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF] h-20 resize-none" 
@@ -533,7 +742,6 @@ export function Contracts() {
                   />
                 )}
 
-                {/* Description */}
                 <textarea 
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF] h-20 resize-none" 
                   placeholder="Description / Conditions" 
@@ -541,7 +749,6 @@ export function Contracts() {
                   onChange={(e) => setNewContract({ ...newContract, description: e.target.value })} 
                 />
 
-                {/* Document Upload */}
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Document PDF</label>
                   <input 
@@ -578,89 +785,15 @@ export function Contracts() {
                 </div>
                 <button onClick={() => setSelectedContract(null)}><X className="w-5 h-5 text-gray-500" /></button>
               </div>
-              <div className="space-y-3">
-                <div className="bg-[#F6F9FC] rounded-lg p-4 grid grid-cols-2 gap-3 text-sm">
-                  <div><span className="text-gray-500">Reference</span><p className="font-medium text-[#0a2540]">{selectedContract.reference}</p></div>
-                  <div><span className="text-gray-500">Statut</span><p className="font-medium text-[#0a2540]">{statusConfig[selectedContract.status]?.label || 'Inconnu'}</p></div>
-                  <div><span className="text-gray-500">Valeur</span><p className="font-medium text-[#0a2540]">USD {selectedContract.value}</p></div>
-                  <div><span className="text-gray-500">Sous-traitant</span><p className="font-medium text-[#0a2540]">{selectedContract.subcontractor_name || selectedContract.subcontractor_email}</p></div>
-                  {selectedContract.start_date && selectedContract.document_type === 'contract' && (
-                    <div><span className="text-gray-500">Debut</span><p className="font-medium text-[#0a2540]">{selectedContract.start_date}</p></div>
-                  )}
-                  {selectedContract.end_date && (
-                    <div><span className="text-gray-500">{selectedContract.document_type === 'purchase_order' ? 'Livraison' : 'Fin'}</span><p className="font-medium text-[#0a2540]">{selectedContract.end_date}</p></div>
-                  )}
-                </div>
 
-                {/* Subcontractor details if available */}
-                {(selectedContract.subcontractor_rccm || selectedContract.subcontractor_idnat) && (
-                  <div className="bg-[#F6F9FC] rounded-lg p-4">
-                    <h4 className="text-sm font-medium text-[#0a2540] mb-2">Details du sous-traitant</h4>
-                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
-                      {selectedContract.subcontractor_rccm && <div>RCCM: {selectedContract.subcontractor_rccm}</div>}
-                      {selectedContract.subcontractor_idnat && <div>IDNAT: {selectedContract.subcontractor_idnat}</div>}
-                      {selectedContract.subcontractor_tax_number && <div>NIF: {selectedContract.subcontractor_tax_number}</div>}
-                      {selectedContract.subcontractor_province && <div>Province: {selectedContract.subcontractor_province}</div>}
-                      {selectedContract.subcontractor_sector && <div>Secteur: {selectedContract.subcontractor_sector}</div>}
-                    </div>
-                  </div>
-                )}
+              {renderContractDetails(selectedContract)}
 
-                {selectedContract.description && (
-                  <div className="bg-[#F6F9FC] rounded-lg p-4">
-                    <p className="text-sm text-gray-600">{selectedContract.description}</p>
-                  </div>
-                )}
-
-                {selectedContract.items && (
-                  <div className="bg-[#F6F9FC] rounded-lg p-4">
-                    <h4 className="text-sm font-medium text-[#0a2540] mb-1">Articles / Services</h4>
-                    <p className="text-sm text-gray-600">{selectedContract.items}</p>
-                  </div>
-                )}
-
-                {/* Progress - only for contracts */}
-                {selectedContract.document_type === 'contract' && auth.userRole === 'prime' && (
-                  <div className="bg-[#F6F9FC] rounded-lg p-4">
-                    <label className="text-sm font-medium text-[#0a2540] mb-2 block">
-                      Progression: {selectedContract.progress}%
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={selectedContract.progress}
-                      onChange={(e) => updateProgress(selectedContract.id, parseInt(e.target.value))}
-                      className="w-full accent-[#007FFF]"
-                    />
-                    <div className="flex justify-between text-xs text-gray-400 mt-1">
-                      <span>0%</span>
-                      <span>50%</span>
-                      <span>100%</span>
-                    </div>
-                  </div>
-                )}
-
-                {auth.userRole === 'prime' && (
-                  <select
-                    value={selectedContract.status}
-                    onChange={(e) => updateStatus(selectedContract.id, e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]"
-                  >
-                    <option value="draft">Brouillon</option>
-                    <option value="active">Actif</option>
-                    <option value="completed">Termine</option>
-                    <option value="disputed">Litige</option>
-                  </select>
-                )}
-
-                {docUrl && (
-                  <a href={docUrl} target="_blank" rel="noopener noreferrer" className="w-full py-2.5 bg-[#0a2540] text-white rounded-lg font-semibold hover:bg-[#0d2f4f] flex items-center justify-center gap-2">
-                    <Download className="w-4 h-4" />
-                    Telecharger le document
-                  </a>
-                )}
-              </div>
+              {docUrl && (
+                <a href={docUrl} target="_blank" rel="noopener noreferrer" className="mt-4 w-full py-2.5 bg-[#0a2540] text-white rounded-lg font-semibold hover:bg-[#0d2f4f] flex items-center justify-center gap-2">
+                  <Download className="w-4 h-4" />
+                  Telecharger le document
+                </a>
+              )}
             </div>
           </div>
         </div>
