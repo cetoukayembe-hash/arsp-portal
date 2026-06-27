@@ -37,8 +37,7 @@ export function Analytics() {
   }, {});
   const pieData = Object.entries(sectorCount)
     .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => (b.value as number) - (a.value as number))
-    .slice(0, 6); // Top 6 sectors
+    .sort((a, b) => (b.value as number) - (a.value as number));
 
   // Real province distribution from database
   const provinceCount = enterprises.reduce((acc: Record<string, number>, e) => {
@@ -47,8 +46,7 @@ export function Analytics() {
   }, {});
   const provinceData = Object.entries(provinceCount)
     .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => (b.value as number) - (a.value as number))
-    .slice(0, 6);
+    .sort((a, b) => (b.value as number) - (a.value as number));
 
   // Real monthly registration trend (group by created_at month)
   const monthlyData = (() => {
