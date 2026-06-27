@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Download, Calendar, TrendingUp, Users, FileCheck, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Download, Calendar, TrendingUp, Users, FileCheck, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 // ARSP Brand Colors
-const COLORS = ['#1a237e', '#007FFF', '#FFCD00', '#EF4135', '#6b7280', '#10B981'];
+const COLORS = ['#1a237e', '#007FFF', '#FFCD00', '#EF4135', '#6b7280', '#10B981', '#8b5cf6', '#f59e0b'];
 
 export function Analytics() {
   const [enterprises, setEnterprises] = useState<any[]>([]);
@@ -17,7 +17,7 @@ export function Analytics() {
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
-      const { data: ent } = await supabase.from('enterprises').select('*');
+      const { data: ent } = await supabase.from('enterprises').select('*, user_profiles(role)');
       const { data: ten } = await supabase.from('tenders').select('*');
       const { data: con } = await supabase.from('contracts').select('*');
       const { data: usr } = await supabase.from('user_profiles').select('*');
@@ -30,7 +30,7 @@ export function Analytics() {
     fetchData();
   }, []);
 
-  // Real sector distribution from database
+  // Real sector distribution
   const sectorCount = enterprises.reduce((acc: Record<string, number>, e) => {
     if (e.sector) acc[e.sector] = (acc[e.sector] || 0) + 1;
     return acc;
@@ -39,7 +39,7 @@ export function Analytics() {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => (b.value as number) - (a.value as number));
 
-  // Real province distribution from database
+  // Real province distribution
   const provinceCount = enterprises.reduce((acc: Record<string, number>, e) => {
     if (e.province) acc[e.province] = (acc[e.province] || 0) + 1;
     return acc;
@@ -48,7 +48,33 @@ export function Analytics() {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => (b.value as number) - (a.value as number));
 
-  // Real monthly registration trend (group by created_at month)
+  // Role distribution (subcontractor vs prime)
+  const roleCount = enterprises.reduce((acc: Record<string, number>, e) => {
+    const role = e.user_profiles?.role || 'Non categorise';
+    acc[role] = (acc[role] || 0) + 1;
+    return acc;
+  }, {});
+  const roleData = Object.entries(roleCount)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => (b.value as number) - (a.value as number));
+
+  // Status distribution (active, pending, rejected, suspended)
+  const statusCount = enterprises.reduce((acc: Record<string, number>, e) => {
+    const status = e.status || 'unknown';
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
+  const statusData = Object.entries(statusCount)
+    .map(([name, value]) => ({ 
+      name: name === 'active' ? 'Actif' : 
+            name === 'pending' ? 'En attente' : 
+            name === 'rejected' ? 'Rejete' : 
+            name === 'suspended' ? 'Suspendu' : name,
+      value 
+    }))
+    .sort((a, b) => (b.value as number) - (a.value as number));
+
+  // Real monthly registration trend
   const monthlyData = (() => {
     const months: Record<string, { registrations: number; approvals: number }> = {};
     const now = new Date();
@@ -97,6 +123,8 @@ export function Analytics() {
 
   const activeEnterprises = enterprises.filter(e => e.status === 'active').length;
   const pendingApprovals = enterprises.filter(e => e.status === 'pending').length;
+  const rejectedCount = enterprises.filter(e => e.status === 'rejected').length;
+  const suspendedCount = enterprises.filter(e => e.status === 'suspended').length;
   const activeTenders = tenders.filter(t => t.status === 'open').length;
   const activeContracts = contracts.filter(c => c.status === 'active').length;
 
@@ -176,6 +204,26 @@ export function Analytics() {
         </div>
       </div>
 
+      {/* Status KPI Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-emerald-50 rounded-xl p-4 text-center">
+          <div className="text-2xl font-bold text-emerald-700">{activeEnterprises}</div>
+          <div className="text-xs text-emerald-600">Actives</div>
+        </div>
+        <div className="bg-amber-50 rounded-xl p-4 text-center">
+          <div className="text-2xl font-bold text-amber-700">{pendingApprovals}</div>
+          <div className="text-xs text-amber-600">En attente</div>
+        </div>
+        <div className="bg-red-50 rounded-xl p-4 text-center">
+          <div className="text-2xl font-bold text-red-700">{rejectedCount}</div>
+          <div className="text-xs text-red-600">Rejetees</div>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-4 text-center">
+          <div className="text-2xl font-bold text-gray-700">{suspendedCount}</div>
+          <div className="text-xs text-gray-600">Suspendues</div>
+        </div>
+      </div>
+
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white rounded-xl p-5 card-shadow">
@@ -229,6 +277,50 @@ export function Analytics() {
         </div>
 
         <div className="bg-white rounded-xl p-5 card-shadow">
+          <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition par role</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie 
+                data={roleData.length > 0 ? roleData : [{ name: 'Aucune donnee', value: 1 }]} 
+                cx="50%" cy="50%" 
+                innerRadius={60} 
+                outerRadius={90} 
+                paddingAngle={4} 
+                dataKey="value"
+              >
+                {(roleData.length > 0 ? roleData : [{ name: 'Aucune donnee', value: 1 }]).map((_, index) => (
+                  <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-white rounded-xl p-5 card-shadow">
+          <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition par statut</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie 
+                data={statusData.length > 0 ? statusData : [{ name: 'Aucune donnee', value: 1 }]} 
+                cx="50%" cy="50%" 
+                innerRadius={60} 
+                outerRadius={90} 
+                paddingAngle={4} 
+                dataKey="value"
+              >
+                {(statusData.length > 0 ? statusData : [{ name: 'Aucune donnee', value: 1 }]).map((_, index) => (
+                  <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-white rounded-xl p-5 card-shadow">
           <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Evolution conformite (reel)</h3>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={complianceTrend.length > 0 ? complianceTrend : [{ month: '-', score: 0 }]}>
@@ -258,6 +350,7 @@ export function Analytics() {
                   <th className="text-left px-4 py-3 font-semibold text-[#1a237e]">Entreprise</th>
                   <th className="text-left px-4 py-3 font-semibold text-[#1a237e]">Secteur</th>
                   <th className="text-left px-4 py-3 font-semibold text-[#1a237e]">Province</th>
+                  <th className="text-left px-4 py-3 font-semibold text-[#1a237e]">Role</th>
                   <th className="text-left px-4 py-3 font-semibold text-[#1a237e]">Capital %</th>
                   <th className="text-left px-4 py-3 font-semibold text-[#1a237e]">Statut</th>
                 </tr>
@@ -268,14 +361,16 @@ export function Analytics() {
                     <td className="px-4 py-3 font-medium text-[#1a237e]">{e.name}</td>
                     <td className="px-4 py-3 text-gray-600">{e.sector}</td>
                     <td className="px-4 py-3 text-gray-600">{e.province}</td>
+                    <td className="px-4 py-3 text-gray-600 capitalize">{e.user_profiles?.role || 'Non categorise'}</td>
                     <td className="px-4 py-3 text-gray-600">{e.congolese_capital}%</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                         e.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
                         e.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                        'bg-red-100 text-red-700'
+                        e.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                        'bg-gray-100 text-gray-700'
                       }`}>
-                        {e.status === 'active' ? 'Agree' : e.status === 'pending' ? 'En attente' : 'Suspendu'}
+                        {e.status === 'active' ? 'Agree' : e.status === 'pending' ? 'En attente' : e.status === 'rejected' ? 'Rejete' : 'Suspendu'}
                       </span>
                     </td>
                   </tr>
