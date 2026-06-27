@@ -24,6 +24,7 @@ export function Declarations() {
   const [showNew, setShowNew] = useState(false);
   const [selectedDeclaration, setSelectedDeclaration] = useState(null);
   const [declarationLines, setDeclarationLines] = useState([]);
+  const [linesLoading, setLinesLoading] = useState(false);
   const [proofFile, setProofFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [isOverdue, setIsOverdue] = useState(false);
@@ -92,12 +93,15 @@ export function Declarations() {
     setLoading(false);
   }
 
-    async function fetchDeclarationLines(declarationId) {
+  async function fetchDeclarationLines(declarationId) {
     console.log('Fetching lines for declaration:', declarationId);
+    setLinesLoading(true);
+    setDeclarationLines([]);
     const { data, error } = await supabase
       .from("declaration_lines")
       .select("*")
-      .eq("declaration_id", declarationId);
+      .eq("declaration_id", declarationId)
+      .order("created_at", { ascending: true });
     
     if (error) {
       console.error('Error fetching lines:', error);
@@ -106,7 +110,13 @@ export function Declarations() {
     }
     
     if (data) setDeclarationLines(data);
+    setLinesLoading(false);
   }
+
+  async function exportToExcel() {
+    const { data: allDecl } = await supabase.from("declarations").select("*").order("created_at", { ascending: false });
+    const { data: allLines } = await supabase.from("declaration_lines").select("*");
+    if (!allDecl || !allLines) return;
 
     const rows = [];
     allDecl.forEach(d => {
@@ -626,7 +636,7 @@ export function Declarations() {
         </div>
       )}
 
-            {/* DETAIL MODAL */}
+      {/* DETAIL MODAL */}
       {selectedDeclaration && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedDeclaration(null)}>
           <div className="bg-white rounded-2xl max-w-5xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -687,7 +697,12 @@ export function Declarations() {
                 </div>
               )}
                 
-              {declarationLines.length > 0 ? (
+              {linesLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin w-6 h-6 border-2 border-[#007FFF] border-t-transparent rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-400">Chargement des lignes...</p>
+                </div>
+              ) : declarationLines.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-[#0a2540] text-white">
@@ -732,6 +747,7 @@ export function Declarations() {
                 <div className="text-center py-8 bg-gray-50 rounded-xl">
                   <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                   <p className="text-sm text-gray-400">Aucune ligne de declaration trouvee</p>
+                  <p className="text-xs text-gray-400 mt-1">ID: {selectedDeclaration.id}</p>
                 </div>
               )}
 
@@ -797,4 +813,3 @@ export function Declarations() {
     </div>
   );
 }
-      
