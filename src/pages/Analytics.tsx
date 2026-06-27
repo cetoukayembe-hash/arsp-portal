@@ -3,6 +3,7 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { Download, Calendar, TrendingUp, Users, FileCheck, AlertTriangle, CheckCircle2, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import jsPDF from 'jspdf';
+import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 
 // ARSP Brand Colors
@@ -132,6 +133,7 @@ export function Analytics() {
   const activeContracts = contracts.filter(c => c.status === 'active').length;
 
   // CSV Export
+    // CSV Export
   const handleExportCSV = () => {
     const headers = ['Entreprise', 'Email', 'Secteur', 'Province', 'Role', 'Capital Congolais', 'Statut', 'Date Creation'];
     const rows = enterprises.map(e => [
@@ -156,6 +158,110 @@ export function Analytics() {
     link.download = `ARSP_Enterprises_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
+
+  // Excel Export with styling
+  const handleExportExcel = () => {
+    const wb = XLSX.utils.book_new();
+    wb.Props = {
+      Title: 'ARSP Analytics Report',
+      Subject: 'Enterprise Analytics',
+      Author: 'ARSP Portal',
+      CreatedDate: new Date(),
+    };
+
+    // Summary sheet
+    const summaryData = [
+      ['ARSP - Tableau de Bord Analytics'],
+      [''],
+      ['Metriques cles'],
+      ['Entreprises enregistrees', enterprises.length],
+      ['Entreprises actives', activeEnterprises],
+      ['En attente', pendingApprovals],
+      ['Rejetees', rejectedCount],
+      ['Suspendues', suspendedCount],
+      ['Appels d\'offres actifs', activeTenders],
+      ['Contrats actifs', activeContracts],
+      [''],
+      ['Repartition par role'],
+      ['Role', 'Nombre'],
+      ...roleData.map(r => [r.name, r.value]),
+      [''],
+      ['Repartition par statut'],
+      ['Statut', 'Nombre'],
+      ...statusData.map(s => [s.name, s.value]),
+    ];
+
+    const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+    
+    // Style the header
+    summaryWs['!cols'] = [{ wch: 30 }, { wch: 15 }];
+    if (summaryWs['A1']) {
+      summaryWs['A1'].s = { 
+        font: { bold: true, sz: 16, color: { rgb: '1a237e' } },
+        fill: { fgColor: { rgb: 'F6F9FC' } }
+      };
+    }
+
+    XLSX.utils.book_append_sheet(wb, summaryWs, 'Resume');
+
+    // Enterprises sheet
+    const enterpriseHeaders = ['Entreprise', 'Email', 'Secteur', 'Province', 'Role', 'Capital Congolais', 'Statut', 'Date Creation'];
+    const enterpriseRows = enterprises.map(e => [
+      e.name,
+      e.email,
+      e.sector || 'N/A',
+      e.province || 'N/A',
+      e.user_profiles?.role || 'Non categorise',
+      `${e.congolese_capital}%`,
+      e.status,
+      new Date(e.created_at).toLocaleDateString('fr-FR')
+    ]);
+
+    const enterpriseWs = XLSX.utils.aoa_to_sheet([enterpriseHeaders, ...enterpriseRows]);
+    
+    // Style header row
+    const headerStyle = { 
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: '1a237e' } }
+    };
+    
+    const range = XLSX.utils.decode_range(enterpriseWs['!ref'] || 'A1');
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const cellRef = XLSX.utils.encode_cell({ r: 0, c: col });
+      if (enterpriseWs[cellRef]) {
+        enterpriseWs[cellRef].s = headerStyle;
+      }
+    }
+
+    enterpriseWs['!cols'] = [
+      { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, 
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
+    ];
+
+    XLSX.utils.book_append_sheet(wb, enterpriseWs, 'Entreprises');
+
+    // Sector distribution sheet
+    const sectorWs = XLSX.utils.aoa_to_sheet([
+      ['Secteur', 'Nombre d\'entreprises'],
+      ...pieData.map(s => [s.name, s.value])
+    ]);
+    XLSX.utils.book_append_sheet(wb, sectorWs, 'Secteurs');
+
+    // Province distribution sheet
+    const provinceWs = XLSX.utils.aoa_to_sheet([
+      ['Province', 'Nombre d\'entreprises'],
+      ...provinceData.map(p => [p.name, p.value])
+    ]);
+    XLSX.utils.book_append_sheet(wb, provinceWs, 'Provinces');
+
+    // Save
+    XLSX.writeFile(wb, `ARSP_Rapport_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+    
+
+    
+
+    
 
   // PDF Export
     const handleExportPDF = async () => {
@@ -229,12 +335,25 @@ export function Analytics() {
             <option value="12mois">12 derniers mois</option>
           </select>
           <button 
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-[#1a237e] text-white rounded-lg text-sm font-medium hover:bg-[#0d1642]"
-          >
-            <Download className="w-4 h-4" />
-            Exporter CSV
-          </button>
+  onClick={handleExportCSV}
+  className="flex items-center gap-2 px-4 py-2 bg-[#1a237e] text-white rounded-lg text-sm font-medium hover:bg-[#0d1642]"
+>
+  <Download className="w-4 h-4" />
+  CSV
+</button>
+<button 
+  onClick={handleExportExcel}
+  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
+>
+  <FileText className="w-4 h-4" />
+  Excel
+</button>
+            
+            
+          
+            
+            
+          
           <button 
             onClick={handleExportPDF}
             className="flex items-center gap-2 px-4 py-2 border border-[#1a237e] text-[#1a237e] rounded-lg text-sm font-medium hover:bg-[#1a237e] hover:text-white"
