@@ -102,6 +102,19 @@ export function Contracts() {
     setLoading(false);
   }
 
+  // Send notification helper
+  async function sendNotification(userId: string, type: string, title: string, message: string, relatedId?: string, relatedType?: string) {
+    await supabase.from('notifications').insert([{
+      user_id: userId,
+      type,
+      title,
+      message,
+      related_id: relatedId || null,
+      related_type: relatedType || null,
+      read: false,
+    }]);
+  }
+
   // Search subcontractors from registered enterprises
   async function searchSubcontractors(query: string) {
     if (query.length < 2) {
@@ -223,11 +236,31 @@ export function Contracts() {
       insertData.end_date = newContract.delivery_date;
     }
 
-    const { error } = await supabase.from('contracts').insert([insertData]);
+    const { data: insertedContract, error } = await supabase.from('contracts').insert([insertData]).select('id').single();
     
     if (error) {
       alert('Erreur lors de la creation: ' + error.message);
       return;
+    }
+
+    // Send notification to subcontractor
+    if (selectedSubcontractor) {
+      const { data: subUser } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('email', newContract.subcontractor_email)
+        .single();
+      
+      if (subUser) {
+        await sendNotification(
+          subUser.id,
+          'new_contract',
+          `Nouveau ${documentType === 'contract' ? 'contrat' : 'bon de commande'} recu`,
+          `${primeDetails.name} vous a envoye un ${documentType === 'contract' ? 'contrat' : 'bon de commande'}: "${newContract.title}" d'une valeur de USD ${newContract.value}`,
+          insertedContract?.id,
+          'contract'
+        );
+      }
     }
 
     setShowCreate(false);
@@ -265,6 +298,25 @@ export function Contracts() {
     if (!error) {
       setSelectedContract((prev: any) => ({ ...prev, status: 'active' }));
       fetchContracts();
+      
+      // Notify the prime that subcontractor accepted
+      const { data: contract } = await supabase
+        .from('contracts')
+        .select('prime_id, title')
+        .eq('id', id)
+        .single();
+      
+      if (contract && contract.prime_id) {
+        await sendNotification(
+          contract.prime_id,
+          'contract_accepted',
+          'Contrat accepte',
+          `Le sous-traitant a accepte le contrat "${contract.title}"`,
+          id,
+          'contract'
+        );
+      }
+      
       alert('Document accepte avec succes!');
     } else {
       alert('Erreur: ' + error.message);
