@@ -52,7 +52,8 @@ export function Contracts() {
       title: newContract.title,
       reference: newContract.reference || 'CONT-' + Date.now(),
       subcontractor_email: newContract.subcontractor_email,
-      prime_email: 'prime@arsp.cd',
+      prime_email: auth.userEmail || 'prime@arsp.cd',
+      prime_id: auth.userId,
       value: parseFloat(newContract.value),
       start_date: newContract.start_date,
       end_date: newContract.end_date,
@@ -66,19 +67,26 @@ export function Contracts() {
       setContractFile(null);
       setNewContract({ title: '', reference: '', subcontractor_email: '', value: '', start_date: '', end_date: '', description: '' });
       fetchContracts();
+    } else {
+      console.error('Contract creation error:', error);
+      alert('Erreur lors de la creation du contrat: ' + error.message);
     }
   }
 
   async function updateProgress(id: string, progress: number) {
-    await supabase.from('contracts').update({ progress }).eq('id', id);
-    setSelectedContract((prev: any) => ({ ...prev, progress }));
-    fetchContracts();
+    const { error } = await supabase.from('contracts').update({ progress }).eq('id', id);
+    if (!error) {
+      setSelectedContract((prev: any) => ({ ...prev, progress }));
+      fetchContracts();
+    }
   }
 
   async function updateStatus(id: string, status: string) {
-    await supabase.from('contracts').update({ status }).eq('id', id);
-    setSelectedContract((prev: any) => ({ ...prev, status }));
-    fetchContracts();
+    const { error } = await supabase.from('contracts').update({ status }).eq('id', id);
+    if (!error) {
+      setSelectedContract((prev: any) => ({ ...prev, status }));
+      fetchContracts();
+    }
   }
 
   const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
@@ -251,12 +259,12 @@ export function Contracts() {
                     <option value="disputed">Litige</option>
                   </select>
                 )}
-                docUrl !== '' ? (
+                {docUrl !== '' && (
                   <a href={docUrl} target="_blank" rel="noopener noreferrer" className="w-full py-2.5 bg-[#0a2540] text-white rounded-lg font-semibold hover:bg-[#0d2f4f] flex items-center justify-center gap-2">
                     <Download className="w-4 h-4" />
                     Telecharger le document
                   </a>
-                ) : null
+                )}
               </div>
             </div>
           </div>
