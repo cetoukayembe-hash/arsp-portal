@@ -281,13 +281,22 @@ export function Analytics() {
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie 
-                data={roleData.length > 0 ? roleData : [{ name: 'Aucune donnee', value: 1 }]} 
-                cx="50%" cy="50%" 
-                innerRadius={60} 
-                outerRadius={90} 
-                paddingAngle={4} 
-                dataKey="value"
-              >
+  data={roleData.length > 0 ? roleData : [{ name: 'Aucune donnee', value: 1 }]} 
+  cx="50%" cy="50%" 
+  innerRadius={60} 
+  outerRadius={90} 
+  paddingAngle={4} 
+  dataKey="value"
+  label={({ name, value }) => `${name}: ${value}`}
+  labelLine={true}
+>
+                 
+            
+                
+                 
+                
+                
+              
                 {(roleData.length > 0 ? roleData : [{ name: 'Aucune donnee', value: 1 }]).map((_, index) => (
                   <Cell key={index} fill={COLORS[index % COLORS.length]} />
                 ))}
@@ -303,13 +312,22 @@ export function Analytics() {
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie 
-                data={statusData.length > 0 ? statusData : [{ name: 'Aucune donnee', value: 1 }]} 
-                cx="50%" cy="50%" 
-                innerRadius={60} 
-                outerRadius={90} 
-                paddingAngle={4} 
-                dataKey="value"
-              >
+  data={statusData.length > 0 ? statusData : [{ name: 'Aucune donnee', value: 1 }]} 
+  cx="50%" cy="50%" 
+  innerRadius={60} 
+  outerRadius={90} 
+  paddingAngle={4} 
+  dataKey="value"
+  label={({ name, value }) => `${name}: ${value}`}
+  labelLine={true}
+> 
+                 
+                
+                
+                
+                 
+                
+              
                 {(statusData.length > 0 ? statusData : [{ name: 'Aucune donnee', value: 1 }]).map((_, index) => (
                   <Cell key={index} fill={COLORS[index % COLORS.length]} />
                 ))}
