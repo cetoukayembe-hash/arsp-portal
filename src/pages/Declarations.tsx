@@ -620,104 +620,170 @@ export function Declarations() {
         </div>
       )}
 
-      {/* DETAIL MODAL */}
+            {/* DETAIL MODAL */}
       {selectedDeclaration && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedDeclaration(null)}>
-          <div className="bg-white rounded-2xl max-w-4xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl max-w-5xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-xl font-bold text-[#0a2540]">Declaration {selectedDeclaration.month} {selectedDeclaration.year}</h3>
-                  <p className="text-sm text-gray-500">{selectedDeclaration.prime_name}</p>
+                  <p className="text-sm text-gray-500">{selectedDeclaration.prime_name} — {selectedDeclaration.prime_email}</p>
                 </div>
                 <button onClick={() => setSelectedDeclaration(null)}><X className="w-5 h-5 text-gray-500" /></button>
               </div>
-              <div className="space-y-4">
+
+              {/* Status & Meta */}
+              <div className="flex flex-wrap items-center gap-3 mb-4">
                 <span className={"px-2 py-0.5 rounded-full text-xs font-bold uppercase " + (statusConfig[selectedDeclaration.status] ? statusConfig[selectedDeclaration.status].color : "")}>
                   {statusConfig[selectedDeclaration.status] ? statusConfig[selectedDeclaration.status].label : ""}
                 </span>
-                
-                {declarationLines.length > 0 && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-[#F6F9FC]">
-                        <tr>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Type</th>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Sous-traitant</th>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Activite</th>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Ref</th>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Valeur (USD)</th>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Paye (USD)</th>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">ARSP (USD)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {declarationLines.map((line) => (
-                          <tr key={line.id}>
-                            <td className="px-3 py-2">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${docTypeConfig[line.document_type]?.color || docTypeConfig.manual.color}`}>
-                                {docTypeConfig[line.document_type]?.label || 'Manuel'}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 text-xs">{line.subcontractor_name}</td>
-                            <td className="px-3 py-2 text-xs">{line.activity_type}</td>
-                            <td className="px-3 py-2 text-xs">{line.contract_ref}</td>
-                            <td className="px-3 py-2 text-xs">${parseFloat(line.amount_htva).toFixed(2)}</td>
-                            <td className="px-3 py-2 text-xs font-medium text-emerald-600">${parseFloat(line.amount_paid || line.amount_htva).toFixed(2)}</td>
-                            <td className="px-3 py-2 text-xs font-medium text-red-600">${parseFloat(line.amount_arsp).toFixed(2)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="bg-[#0a2540] text-white">
-                        <tr>
-                          <td colSpan={4} className="px-3 py-2 text-xs font-bold text-right">Totaux:</td>
-                          <td className="px-3 py-2 text-xs font-bold">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_htva), 0).toFixed(2)}</td>
-                          <td className="px-3 py-2 text-xs font-bold text-emerald-300">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_paid || l.amount_htva), 0).toFixed(2)}</td>
-                          <td className="px-3 py-2 text-xs font-bold text-amber-400">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_arsp), 0).toFixed(2)}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                )}
+                <span className="text-xs text-gray-400">
+                  Soumise le: {selectedDeclaration.submitted_at ? new Date(selectedDeclaration.submitted_at).toLocaleDateString('fr-FR') : 'Non soumise'}
+                </span>
+                <span className="text-xs text-gray-400">
+                  Creee le: {new Date(selectedDeclaration.created_at).toLocaleDateString('fr-FR')}
+                </span>
+              </div>
 
-                {selectedDeclaration.proof_of_payment_url ? (
-                  <a href={selectedDeclaration.proof_of_payment_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm hover:bg-blue-100">
-                    <FileText className="w-4 h-4" />Voir la preuve de paiement
-                  </a>
-                ) : auth.userRole === "prime" && selectedDeclaration.status !== "validated" ? (
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">Ajouter preuve de paiement</label>
-                    <div className="border-2 border-dashed rounded-xl p-4 text-center border-gray-300 hover:border-[#007FFF]">
-                      <Upload className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" id="proof-upload-detail"
-                        onChange={async (e) => {
-                          const file = e.target.files ? e.target.files[0] : null;
-                          if (file) await uploadProof(file, selectedDeclaration.id);
-                        }}
-                      />
-                      <label htmlFor="proof-upload-detail" className="cursor-pointer text-xs text-[#007FFF] hover:underline">Cliquer pour uploader la preuve</label>
+              {/* Admin Summary Cards */}
+              {auth.userRole === "admin" && declarationLines.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+                  <div className="bg-[#F6F9FC] rounded-xl p-4 text-center">
+                    <p className="text-xs text-gray-500 mb-1">Lignes declarees</p>
+                    <p className="text-2xl font-bold text-[#0a2540]">{declarationLines.length}</p>
+                  </div>
+                  <div className="bg-[#F6F9FC] rounded-xl p-4 text-center">
+                    <p className="text-xs text-gray-500 mb-1">Valeur totale contrats</p>
+                    <p className="text-2xl font-bold text-[#0a2540]">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_htva), 0).toFixed(2)}</p>
+                  </div>
+                  <div className="bg-emerald-50 rounded-xl p-4 text-center border border-emerald-100">
+                    <p className="text-xs text-emerald-600 mb-1">Total paye ce mois</p>
+                    <p className="text-2xl font-bold text-emerald-700">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_paid || l.amount_htva), 0).toFixed(2)}</p>
+                  </div>
+                  <div className="bg-amber-50 rounded-xl p-4 text-center border border-amber-100">
+                    <p className="text-xs text-amber-600 mb-1">ARSP du (1.2%)</p>
+                    <p className="text-2xl font-bold text-amber-700">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_arsp), 0).toFixed(2)}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Prime company details for admin */}
+              {auth.userRole === "admin" && (
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100 mb-4">
+                  <h4 className="text-sm font-semibold text-[#1a237e] mb-2">Entreprise declarante</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-600">
+                    <div><span className="text-gray-400">Nom:</span> {selectedDeclaration.prime_name}</div>
+                    <div><span className="text-gray-400">Email:</span> {selectedDeclaration.prime_email}</div>
+                    <div><span className="text-gray-400">Mois:</span> {selectedDeclaration.month}</div>
+                    <div><span className="text-gray-400">Annee:</span> {selectedDeclaration.year}</div>
+                  </div>
+                </div>
+              )}
+                
+              {declarationLines.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-[#0a2540] text-white">
+                      <tr>
+                        <th className="text-left px-3 py-2 text-xs font-semibold">Type</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold">Sous-traitant</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold">Activite</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold">Ref</th>
+                        <th className="text-right px-3 py-2 text-xs font-semibold">Valeur (USD)</th>
+                        <th className="text-right px-3 py-2 text-xs font-semibold">Paye (USD)</th>
+                        <th className="text-right px-3 py-2 text-xs font-semibold">ARSP (USD)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {declarationLines.map((line) => (
+                        <tr key={line.id} className="hover:bg-gray-50">
+                          <td className="px-3 py-2">
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${docTypeConfig[line.document_type]?.color || docTypeConfig.manual.color}`}>
+                              {docTypeConfig[line.document_type]?.label || 'Manuel'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-xs font-medium text-[#0a2540]">{line.subcontractor_name}</td>
+                          <td className="px-3 py-2 text-xs text-gray-500">{line.activity_type}</td>
+                          <td className="px-3 py-2 text-xs text-gray-500">{line.contract_ref}</td>
+                          <td className="px-3 py-2 text-xs text-right">${parseFloat(line.amount_htva).toFixed(2)}</td>
+                          <td className="px-3 py-2 text-xs text-right font-medium text-emerald-600">${parseFloat(line.amount_paid || line.amount_htva).toFixed(2)}</td>
+                          <td className="px-3 py-2 text-xs text-right font-medium text-red-600">${parseFloat(line.amount_arsp).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-[#0a2540] text-white">
+                      <tr>
+                        <td colSpan={4} className="px-3 py-2 text-xs font-bold text-right">Totaux:</td>
+                        <td className="px-3 py-2 text-xs font-bold text-right">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_htva), 0).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-xs font-bold text-right text-emerald-300">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_paid || l.amount_htva), 0).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-xs font-bold text-right text-amber-400">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_arsp), 0).toFixed(2)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded-xl">
+                  <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">Aucune ligne de declaration trouvee</p>
+                </div>
+              )}
+
+              {selectedDeclaration.proof_of_payment_url ? (
+                <a href={selectedDeclaration.proof_of_payment_url} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm hover:bg-blue-100 w-fit">
+                  <FileText className="w-4 h-4" />Voir la preuve de paiement
+                </a>
+              ) : auth.userRole === "prime" && selectedDeclaration.status !== "validated" ? (
+                <div className="mt-4">
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Ajouter preuve de paiement</label>
+                  <div className="border-2 border-dashed rounded-xl p-4 text-center border-gray-300 hover:border-[#007FFF]">
+                    <Upload className="w-5 h-5 text-gray-400 mx-auto mb-1" />
+                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" id="proof-upload-detail"
+                      onChange={async (e) => {
+                        const file = e.target.files ? e.target.files[0] : null;
+                        if (file) await uploadProof(file, selectedDeclaration.id);
+                      }}
+                    />
+                    <label htmlFor="proof-upload-detail" className="cursor-pointer text-xs text-[#007FFF] hover:underline">Cliquer pour uploader la preuve</label>
+                  </div>
+                </div>
+              ) : null}
+
+              {selectedDeclaration.rejection_reason && (
+                <div className="bg-red-50 rounded-lg p-4 border border-red-200 mt-4">
+                  <p className="text-sm font-semibold text-red-700 mb-1">Motif du rejet:</p>
+                  <p className="text-sm text-red-600">{selectedDeclaration.rejection_reason}</p>
+                </div>
+              )}
+
+              {/* Admin Actions */}
+              {auth.userRole === "admin" && selectedDeclaration.status === "submitted" && (
+                <div className="mt-6 space-y-3">
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <p className="text-sm font-medium text-amber-800 mb-3">Action administrative</p>
+                    <div className="flex gap-3">
+                      <button onClick={() => handleAdminAction(selectedDeclaration.id, "validated", undefined)} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2">
+                        <CheckCircle2 className="w-4 h-4" />Valider la declaration
+                      </button>
+                      <button onClick={() => { const reason = prompt("Motif du rejet:"); if (reason) handleAdminAction(selectedDeclaration.id, "rejected", reason); }} className="flex-1 py-2.5 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 flex items-center justify-center gap-2">
+                        <AlertTriangle className="w-4 h-4" />Rejeter la declaration
+                      </button>
                     </div>
                   </div>
-                ) : null}
+                </div>
+              )}
 
-                {selectedDeclaration.rejection_reason && (
-                  <div className="bg-red-50 rounded-lg p-3">
-                    <p className="text-sm font-medium text-red-700">Motif du rejet:</p>
-                    <p className="text-sm text-red-600">{selectedDeclaration.rejection_reason}</p>
+              {/* Admin view for already processed declarations */}
+              {auth.userRole === "admin" && (selectedDeclaration.status === "validated" || selectedDeclaration.status === "rejected") && (
+                <div className={`mt-4 rounded-lg p-4 border ${selectedDeclaration.status === 'validated' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                  <div className="flex items-center gap-2">
+                    {selectedDeclaration.status === 'validated' ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <AlertTriangle className="w-5 h-5 text-red-600" />}
+                    <span className="text-sm font-medium">
+                      {selectedDeclaration.status === 'validated' ? 'Cette declaration a ete validee' : 'Cette declaration a ete rejetee'}
+                    </span>
                   </div>
-                )}
-
-                {auth.userRole === "admin" && selectedDeclaration.status === "submitted" && (
-                  <div className="flex gap-3 pt-2">
-                    <button onClick={() => handleAdminAction(selectedDeclaration.id, "validated", undefined)} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2">
-                      <CheckCircle2 className="w-4 h-4" />Valider
-                    </button>
-                    <button onClick={() => { const reason = prompt("Motif du rejet:"); if (reason) handleAdminAction(selectedDeclaration.id, "rejected", reason); }} className="flex-1 py-2.5 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 flex items-center justify-center gap-2">
-                      <AlertTriangle className="w-4 h-4" />Rejeter
-                    </button>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -725,3 +791,4 @@ export function Declarations() {
     </div>
   );
 }
+      
