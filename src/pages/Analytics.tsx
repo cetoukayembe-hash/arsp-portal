@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Download, Calendar, TrendingUp, Users, FileCheck, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { Download, Calendar, TrendingUp, Users, FileCheck, AlertTriangle, CheckCircle2, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 // ARSP Brand Colors
 const COLORS = ['#1a237e', '#007FFF', '#FFCD00', '#EF4135', '#6b7280', '#10B981', '#8b5cf6', '#f59e0b'];
 
 export function Analytics() {
+  const reportRef = useRef<HTMLDivElement>(null);
   const [enterprises, setEnterprises] = useState<any[]>([]);
   const [tenders, setTenders] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
@@ -48,7 +51,7 @@ export function Analytics() {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => (b.value as number) - (a.value as number));
 
-  // Role distribution (subcontractor vs prime)
+  // Role distribution
   const roleCount = enterprises.reduce((acc: Record<string, number>, e) => {
     const role = e.user_profiles?.role || 'Non categorise';
     acc[role] = (acc[role] || 0) + 1;
@@ -58,7 +61,7 @@ export function Analytics() {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => (b.value as number) - (a.value as number));
 
-  // Status distribution (active, pending, rejected, suspended)
+  // Status distribution
   const statusCount = enterprises.reduce((acc: Record<string, number>, e) => {
     const status = e.status || 'unknown';
     acc[status] = (acc[status] || 0) + 1;
@@ -74,7 +77,7 @@ export function Analytics() {
     }))
     .sort((a, b) => (b.value as number) - (a.value as number));
 
-  // Real monthly registration trend
+  // Monthly registration trend
   const monthlyData = (() => {
     const months: Record<string, { registrations: number; approvals: number }> = {};
     const now = new Date();
@@ -100,7 +103,7 @@ export function Analytics() {
     }));
   })();
 
-  // Real compliance scores by month
+  // Compliance scores
   const complianceTrend = (() => {
     const months: Record<string, number[]> = {};
     enterprises.forEach(e => {
@@ -128,6 +131,57 @@ export function Analytics() {
   const activeTenders = tenders.filter(t => t.status === 'open').length;
   const activeContracts = contracts.filter(c => c.status === 'active').length;
 
+  // CSV Export
+  const handleExportCSV = () => {
+    const headers = ['Entreprise', 'Email', 'Secteur', 'Province', 'Role', 'Capital Congolais', 'Statut', 'Date Creation'];
+    const rows = enterprises.map(e => [
+      e.name,
+      e.email,
+      e.sector || 'N/A',
+      e.province || 'N/A',
+      e.user_profiles?.role || 'Non categorise',
+      `${e.congolese_capital}%`,
+      e.status,
+      new Date(e.created_at).toLocaleDateString('fr-FR')
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `ARSP_Enterprises_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  // PDF Export
+  const handleExportPDF = async () => {
+    if (!reportRef.current) return;
+    
+    try {
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`ARSP_Rapport_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      alert('Erreur lors de l\'export PDF');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -153,202 +207,203 @@ export function Analytics() {
             <option value="30jours">30 derniers jours</option>
             <option value="12mois">12 derniers mois</option>
           </select>
-          <button className="flex items-center gap-2 px-4 py-2 bg-[#1a237e] text-white rounded-lg text-sm font-medium hover:bg-[#0d1642]">
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-[#1a237e] text-white rounded-lg text-sm font-medium hover:bg-[#0d1642]"
+          >
             <Download className="w-4 h-4" />
             Exporter CSV
+          </button>
+          <button 
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 px-4 py-2 border border-[#1a237e] text-[#1a237e] rounded-lg text-sm font-medium hover:bg-[#1a237e] hover:text-white"
+          >
+            <FileText className="w-4 h-4" />
+            Telecharger PDF
           </button>
         </div>
       </div>
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-xl p-5 card-shadow border-l-4 border-[#1a237e]">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-500">Entreprises enregistrees</span>
-            <Users className="w-5 h-5 text-[#1a237e]" />
+      {/* Report content for PDF capture */}
+      <div ref={reportRef}>
+        {/* KPI Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-xl p-5 card-shadow border-l-4 border-[#1a237e]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-500">Entreprises enregistrees</span>
+              <Users className="w-5 h-5 text-[#1a237e]" />
+            </div>
+            <div className="text-2xl font-bold text-[#1a237e]">{enterprises.length}</div>
+            <div className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
+              <TrendingUp className="w-3 h-3" />{activeEnterprises} agreees
+            </div>
           </div>
-          <div className="text-2xl font-bold text-[#1a237e]">{enterprises.length}</div>
-          <div className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
-            <TrendingUp className="w-3 h-3" />{activeEnterprises} agreees
+          <div className="bg-white rounded-xl p-5 card-shadow border-l-4 border-[#FFCD00]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-500">Agrements en attente</span>
+              <FileCheck className="w-5 h-5 text-[#FFCD00]" />
+            </div>
+            <div className="text-2xl font-bold text-[#1a237e]">{pendingApprovals}</div>
+            <div className="text-xs text-amber-600 flex items-center gap-1 mt-1">
+              <AlertTriangle className="w-3 h-3" />en attente de validation
+            </div>
           </div>
-        </div>
-        <div className="bg-white rounded-xl p-5 card-shadow border-l-4 border-[#FFCD00]">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-500">Agrements en attente</span>
-            <FileCheck className="w-5 h-5 text-[#FFCD00]" />
+          <div className="bg-white rounded-xl p-5 card-shadow border-l-4 border-[#007FFF]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-500">Appels d'offres actifs</span>
+              <Calendar className="w-5 h-5 text-[#007FFF]" />
+            </div>
+            <div className="text-2xl font-bold text-[#1a237e]">{activeTenders}</div>
+            <div className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
+              <CheckCircle2 className="w-3 h-3" />en cours
+            </div>
           </div>
-          <div className="text-2xl font-bold text-[#1a237e]">{pendingApprovals}</div>
-          <div className="text-xs text-amber-600 flex items-center gap-1 mt-1">
-            <AlertTriangle className="w-3 h-3" />en attente de validation
+          <div className="bg-white rounded-xl p-5 card-shadow border-l-4 border-[#10B981]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-500">Contrats actifs</span>
+              <CheckCircle2 className="w-5 h-5 text-[#10B981]" />
+            </div>
+            <div className="text-2xl font-bold text-[#1a237e]">{activeContracts}</div>
+            <div className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
+              <TrendingUp className="w-3 h-3" />en execution
+            </div>
           </div>
-        </div>
-        <div className="bg-white rounded-xl p-5 card-shadow border-l-4 border-[#007FFF]">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-500">Appels d'offres actifs</span>
-            <Calendar className="w-5 h-5 text-[#007FFF]" />
-          </div>
-          <div className="text-2xl font-bold text-[#1a237e]">{activeTenders}</div>
-          <div className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
-            <CheckCircle2 className="w-3 h-3" />en cours
-          </div>
-        </div>
-        <div className="bg-white rounded-xl p-5 card-shadow border-l-4 border-[#10B981]">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-500">Contrats actifs</span>
-            <CheckCircle2 className="w-5 h-5 text-[#10B981]" />
-          </div>
-          <div className="text-2xl font-bold text-[#1a237e]">{activeContracts}</div>
-          <div className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
-            <TrendingUp className="w-3 h-3" />en execution
-          </div>
-        </div>
-      </div>
-
-      {/* Status KPI Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-emerald-50 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-emerald-700">{activeEnterprises}</div>
-          <div className="text-xs text-emerald-600">Actives</div>
-        </div>
-        <div className="bg-amber-50 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-amber-700">{pendingApprovals}</div>
-          <div className="text-xs text-amber-600">En attente</div>
-        </div>
-        <div className="bg-red-50 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-red-700">{rejectedCount}</div>
-          <div className="text-xs text-red-600">Rejetees</div>
-        </div>
-        <div className="bg-gray-50 rounded-xl p-4 text-center">
-          <div className="text-2xl font-bold text-gray-700">{suspendedCount}</div>
-          <div className="text-xs text-gray-600">Suspendues</div>
-        </div>
-      </div>
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white rounded-xl p-5 card-shadow">
-          <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Tendances d'inscription (reel)</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="registrations" name="Inscriptions" stroke="#1a237e" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="approvals" name="Agrements" stroke="#10B981" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
         </div>
 
-        <div className="bg-white rounded-xl p-5 card-shadow">
-          <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition par secteur (reel)</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie 
-                data={pieData.length > 0 ? pieData : [{ name: 'Aucune donnee', value: 1 }]} 
-                cx="50%" cy="50%" 
-                innerRadius={60} 
-                outerRadius={90} 
-                paddingAngle={4} 
-                dataKey="value"
-              >
-                {(pieData.length > 0 ? pieData : [{ name: 'Aucune donnee', value: 1 }]).map((_, index) => (
-                  <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+        {/* Status KPI Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-emerald-50 rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-emerald-700">{activeEnterprises}</div>
+            <div className="text-xs text-emerald-600">Actives</div>
+          </div>
+          <div className="bg-amber-50 rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-amber-700">{pendingApprovals}</div>
+            <div className="text-xs text-amber-600">En attente</div>
+          </div>
+          <div className="bg-red-50 rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-red-700">{rejectedCount}</div>
+            <div className="text-xs text-red-600">Rejetees</div>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-gray-700">{suspendedCount}</div>
+            <div className="text-xs text-gray-600">Suspendues</div>
+          </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 card-shadow">
-          <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition geographique (reel)</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={provinceData.length > 0 ? provinceData : [{ name: 'Aucune', value: 0 }]}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Bar dataKey="value" name="Entreprises" fill="#1a237e" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {/* Charts Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="bg-white rounded-xl p-5 card-shadow">
+            <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Tendances d'inscription (reel)</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="registrations" name="Inscriptions" stroke="#1a237e" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="approvals" name="Agrements" stroke="#10B981" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
 
-        <div className="bg-white rounded-xl p-5 card-shadow">
-          <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition par role</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie 
-  data={roleData.length > 0 ? roleData : [{ name: 'Aucune donnee', value: 1 }]} 
-  cx="50%" cy="50%" 
-  innerRadius={60} 
-  outerRadius={90} 
-  paddingAngle={4} 
-  dataKey="value"
-  label={({ name, value }) => `${name}: ${value}`}
-  labelLine={true}
->
-                 
-            
-                
-                 
-                
-                
-              
-                {(roleData.length > 0 ? roleData : [{ name: 'Aucune donnee', value: 1 }]).map((_, index) => (
-                  <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+          <div className="bg-white rounded-xl p-5 card-shadow">
+            <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition par secteur (reel)</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie 
+                  data={pieData.length > 0 ? pieData : [{ name: 'Aucune donnee', value: 1 }]} 
+                  cx="50%" cy="50%" 
+                  innerRadius={60} 
+                  outerRadius={90} 
+                  paddingAngle={4} 
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}`}
+                  labelLine={true}
+                >
+                  {(pieData.length > 0 ? pieData : [{ name: 'Aucune donnee', value: 1 }]).map((_, index) => (
+                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
 
-        <div className="bg-white rounded-xl p-5 card-shadow">
-          <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition par statut</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie 
-  data={statusData.length > 0 ? statusData : [{ name: 'Aucune donnee', value: 1 }]} 
-  cx="50%" cy="50%" 
-  innerRadius={60} 
-  outerRadius={90} 
-  paddingAngle={4} 
-  dataKey="value"
-  label={({ name, value }) => `${name}: ${value}`}
-  labelLine={true}
-> 
-                 
-                
-                
-                
-                 
-                
-              
-                {(statusData.length > 0 ? statusData : [{ name: 'Aucune donnee', value: 1 }]).map((_, index) => (
-                  <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+          <div className="bg-white rounded-xl p-5 card-shadow">
+            <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition geographique (reel)</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={provinceData.length > 0 ? provinceData : [{ name: 'Aucune', value: 0 }]}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="value" name="Entreprises" fill="#1a237e" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
 
-        <div className="bg-white rounded-xl p-5 card-shadow">
-          <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Evolution conformite (reel)</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={complianceTrend.length > 0 ? complianceTrend : [{ month: '-', score: 0 }]}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Line type="monotone" dataKey="score" name="Score moyen" stroke="#FFCD00" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="bg-white rounded-xl p-5 card-shadow">
+            <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition par role</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie 
+                  data={roleData.length > 0 ? roleData : [{ name: 'Aucune donnee', value: 1 }]} 
+                  cx="50%" cy="50%" 
+                  innerRadius={60} 
+                  outerRadius={90} 
+                  paddingAngle={4} 
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}`}
+                  labelLine={true}
+                >
+                  {(roleData.length > 0 ? roleData : [{ name: 'Aucune donnee', value: 1 }]).map((_, index) => (
+                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-white rounded-xl p-5 card-shadow">
+            <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition par statut</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie 
+                  data={statusData.length > 0 ? statusData : [{ name: 'Aucune donnee', value: 1 }]} 
+                  cx="50%" cy="50%" 
+                  innerRadius={60} 
+                  outerRadius={90} 
+                  paddingAngle={4} 
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}`}
+                  labelLine={true}
+                >
+                  {(statusData.length > 0 ? statusData : [{ name: 'Aucune donnee', value: 1 }]).map((_, index) => (
+                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-white rounded-xl p-5 card-shadow">
+            <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Evolution conformite (reel)</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={complianceTrend.length > 0 ? complianceTrend : [{ month: '-', score: 0 }]}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Line type="monotone" dataKey="score" name="Score moyen" stroke="#FFCD00" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
