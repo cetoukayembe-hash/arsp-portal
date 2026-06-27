@@ -158,37 +158,58 @@ export function Analytics() {
   };
 
   // PDF Export
-  const handleExportPDF = async () => {
+    const handleExportPDF = async () => {
     if (!reportRef.current) return;
     
     try {
-      const canvas = await html2canvas(reportRef.current, {
+      const element = reportRef.current;
+      const canvas = await html2canvas(element, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
         logging: false,
+        height: element.scrollHeight,
+        windowHeight: element.scrollHeight,
       });
       
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      let imgY = 0;
       
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      // Add first page
+      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      heightLeft -= pdfHeight;
+      
+      // Add additional pages if content overflows
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', imgX, position, imgWidth * ratio, imgHeight * ratio);
+        heightLeft -= pdfHeight;
+      }
+      
       pdf.save(`ARSP_Rapport_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (err) {
       console.error('PDF export failed:', err);
       alert('Erreur lors de l\'export PDF');
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-12 h-12 border-4 border-[#1a237e] border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+    
+    
+    
+      
+      
+      
+      
 
   return (
     <div>
