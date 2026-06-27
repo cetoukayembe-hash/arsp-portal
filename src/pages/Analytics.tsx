@@ -39,9 +39,20 @@ export function Analytics() {
     if (e.sector) acc[e.sector] = (acc[e.sector] || 0) + 1;
     return acc;
   }, {});
-  const pieData = Object.entries(sectorCount)
+    // Group small sectors (1 company) into "Autres"
+  const sortedSectors = Object.entries(sectorCount)
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => (b.value as number) - (a.value as number));
+  
+  const majorSectors = sortedSectors.filter(s => (s.value as number) > 1);
+  const minorSectors = sortedSectors.filter(s => (s.value as number) === 1);
+  
+  const pieData = [
+    ...majorSectors,
+    ...(minorSectors.length > 0 ? [{ name: 'Autres', value: minorSectors.length }] : [])
+  ];
+    
+    
 
   // Real province distribution
   const provinceCount = enterprises.reduce((acc: Record<string, number>, e) => {
