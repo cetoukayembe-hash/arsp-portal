@@ -1,10 +1,21 @@
 import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
-import { Plus, X, FileText, CheckCircle2, Clock, AlertTriangle, Trash2, Upload } from "lucide-react";
+import { Plus, X, FileText, CheckCircle2, Clock, AlertTriangle, Trash2, Upload, Link2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/App";
 
 const months = ["Janvier","Fevrier","Mars","Avril","Mai","Juin","Juillet","Aout","Septembre","Octobre","Novembre","Decembre"];
+
+interface ContractOption {
+  id: string;
+  title: string;
+  reference: string;
+  subcontractor_name: string;
+  subcontractor_email: string;
+  value: number;
+  document_type: string;
+  status: string;
+}
 
 export function Declarations() {
   const auth = useAuth();
@@ -16,13 +27,60 @@ export function Declarations() {
   const [proofFile, setProofFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [isOverdue, setIsOverdue] = useState(false);
-  const [newDeclaration, setNewDeclaration] = useState({ prime_name: "", month: months[new Date().getMonth()], year: new Date().getFullYear() });
-  const [lines, setLines] = useState([{ subcontractor_name: "", activity_type: "", contract_ref: "", amount_htva: "" }]);
+  const [primeDetails, setPrimeDetails] = useState({ name: "", email: "" });
+  
+  const [newDeclaration, setNewDeclaration] = useState({ 
+    prime_name: "", 
+    month: months[new Date().getMonth()], 
+    year: new Date().getFullYear() 
+  });
+  
+  const [lines, setLines] = useState([{ 
+    subcontractor_name: "", 
+    activity_type: "", 
+    contract_ref: "", 
+    amount_htva: "", 
+    contract_id: null,
+    document_type: 'manual',
+    amount_paid: "",
+    manualEntry: true,
+  }]);
 
-  useEffect(() => { fetchDeclarations(); checkOverdue(); }, []);
+  const [primeContracts, setPrimeContracts] = useState<ContractOption[]>([]);
+
+  useEffect(() => { 
+    fetchDeclarations(); 
+    checkOverdue(); 
+    fetchPrimeDetails();
+    fetchPrimeContracts();
+  }, []);
 
   function checkOverdue() {
     if (new Date().getDate() > 7) setIsOverdue(true);
+  }
+
+  async function fetchPrimeDetails() {
+    if (!auth.userId) return;
+    const { data } = await supabase
+      .from('enterprises')
+      .select('name, email')
+      .eq('user_id', auth.userId)
+      .single();
+    if (data) {
+      setPrimeDetails({ name: data.name, email: data.email });
+      setNewDeclaration(prev => ({ ...prev, prime_name: data.name }));
+    }
+  }
+
+  async function fetchPrimeContracts() {
+    if (!auth.userId) return;
+    const { data } = await supabase
+      .from('contracts')
+      .select('id, title, reference, subcontractor_name, subcontractor_email, value, document_type, status')
+      .eq('prime_id', auth.userId)
+      .in('status', ['active', 'completed'])
+      .order('created_at', { ascending: false });
+    if (data) setPrimeContracts(data);
   }
 
   async function fetchDeclarations() {
@@ -55,9 +113,10 @@ export function Declarations() {
           "Annee": d.year,
           "Statut": d.status,
           "Sous-traitant": "",
-          "Type activite": "",
+          "Type document": "",
           "Ref contrat": "",
-          "Montant HTVA (USD)": "",
+          "Valeur contrat (USD)": "",
+          "Montant paye (USD)": "",
           "Montant ARSP (USD)": "",
           "Soumis le": d.submitted_at ? new Date(d.submitted_at).toLocaleDateString("fr-FR") : "",
         });
@@ -70,9 +129,10 @@ export function Declarations() {
             "Annee": i === 0 ? d.year : "",
             "Statut": i === 0 ? d.status : "",
             "Sous-traitant": l.subcontractor_name,
-            "Type activite": l.activity_type,
+            "Type document": l.document_type === 'contract' ? 'Contrat' : l.document_type === 'purchase_order' ? 'Bon de Commande' : 'Manuel',
             "Ref contrat": l.contract_ref,
-            "Montant HTVA (USD)": parseFloat(l.amount_htva).toFixed(2),
+            "Valeur contrat (USD)": parseFloat(l.amount_htva).toFixed(2),
+            "Montant paye (USD)": parseFloat(l.amount_paid || l.amount_htva).toFixed(2),
             "Montant ARSP (USD)": parseFloat(l.amount_arsp).toFixed(2),
             "Soumis le": i === 0 && d.submitted_at ? new Date(d.submitted_at).toLocaleDateString("fr-FR") : "",
           });
@@ -86,11 +146,71 @@ export function Declarations() {
     XLSX.writeFile(wb, "declarations_arsp_" + new Date().toISOString().split("T")[0] + ".xlsx");
   }
 
-  function addLine() { setLines([...lines, { subcontractor_name: "", activity_type: "", contract_ref: "", amount_htva: "" }]); }
+  function addLine() { 
+    setLines([...lines, { 
+      subcontractor_name: "", 
+      activity_type: "", 
+      contract_ref: "", 
+      amount_htva: "", 
+      contract_id: null,
+      document_type: 'manual',
+      amount_paid: "",
+      manualEntry: true,
+    }]); 
+  }
+  
   function removeLine(index) { setLines(lines.filter((_, i) => i !== index)); }
-  function updateLine(index, field, value) { const updated = [...lines]; updated[index] = { ...updated[index], [field]: value }; setLines(updated); }
-  function calculateTotal() { return lines.reduce((sum, line) => sum + (parseFloat(line.amount_htva) || 0), 0); }
-  function calculateArsp() { return calculateTotal() * 0.012; }
+  
+  function updateLine(index, field, value) { 
+    const updated = [...lines]; 
+    updated[index] = { ...updated[index], [field]: value }; 
+    setLines(updated); 
+  }
+
+  function selectContractForLine(index, contractId: string) {
+    const contract = primeContracts.find(c => c.id === contractId);
+    if (!contract) return;
+    
+    const updated = [...lines];
+    updated[index] = {
+      ...updated[index],
+      contract_id: contract.id,
+      subcontractor_name: contract.subcontractor_name || contract.subcontractor_email,
+      contract_ref: contract.reference,
+      amount_htva: contract.value.toString(),
+      amount_paid: contract.value.toString(),
+      document_type: contract.document_type,
+      manualEntry: false,
+    };
+    setLines(updated);
+  }
+
+  function toggleManualEntry(index) {
+    const updated = [...lines];
+    updated[index] = {
+      ...updated[index],
+      manualEntry: true,
+      contract_id: null,
+      document_type: 'manual',
+      subcontractor_name: "",
+      contract_ref: "",
+      amount_htva: "",
+      amount_paid: "",
+    };
+    setLines(updated);
+  }
+
+  function calculateTotalHtva() { 
+    return lines.reduce((sum, line) => sum + (parseFloat(line.amount_htva) || 0), 0); 
+  }
+  
+  function calculateTotalPaid() { 
+    return lines.reduce((sum, line) => sum + (parseFloat(line.amount_paid) || parseFloat(line.amount_htva) || 0), 0); 
+  }
+  
+  function calculateArsp() { 
+    return calculateTotalPaid() * 0.012; 
+  }
 
   async function uploadProof(file, declarationId) {
     const fileName = Date.now() + "_proof_" + file.name;
@@ -117,26 +237,44 @@ export function Declarations() {
     }
     const { data: decData, error } = await supabase.from("declarations").insert([{
       prime_email: auth.userEmail,
-      prime_name: newDeclaration.prime_name,
+      prime_name: newDeclaration.prime_name || primeDetails.name,
       month: newDeclaration.month,
       year: newDeclaration.year,
       status: status,
       proof_of_payment_url: proofUrl,
       submitted_at: status === "submitted" ? new Date().toISOString() : null,
     }]).select();
+    
     if (!error && decData && decData[0]) {
       const decId = decData[0].id;
       const lineInserts = lines.filter(l => l.subcontractor_name && l.amount_htva).map(l => ({
         declaration_id: decId,
         subcontractor_name: l.subcontractor_name,
-        activity_type: l.activity_type,
+        activity_type: l.activity_type || (l.document_type === 'contract' ? 'Contrat' : l.document_type === 'purchase_order' ? 'Bon de Commande' : 'Prestation'),
         contract_ref: l.contract_ref,
         amount_htva: parseFloat(l.amount_htva),
+        amount_paid: parseFloat(l.amount_paid) || parseFloat(l.amount_htva),
+        amount_arsp: (parseFloat(l.amount_paid) || parseFloat(l.amount_htva) || 0) * 0.012,
+        contract_id: l.contract_id,
+        document_type: l.document_type,
       }));
       await supabase.from("declaration_lines").insert(lineInserts);
       setShowNew(false);
-      setLines([{ subcontractor_name: "", activity_type: "", contract_ref: "", amount_htva: "" }]);
-      setNewDeclaration({ prime_name: "", month: months[new Date().getMonth()], year: new Date().getFullYear() });
+      setLines([{ 
+        subcontractor_name: "", 
+        activity_type: "", 
+        contract_ref: "", 
+        amount_htva: "", 
+        contract_id: null,
+        document_type: 'manual',
+        amount_paid: "",
+        manualEntry: true,
+      }]);
+      setNewDeclaration({ 
+        prime_name: primeDetails.name, 
+        month: months[new Date().getMonth()], 
+        year: new Date().getFullYear() 
+      });
       setProofFile(null);
       fetchDeclarations();
     }
@@ -154,6 +292,12 @@ export function Declarations() {
     submitted: { label: "Soumise", color: "bg-blue-100 text-blue-700", icon: Clock },
     validated: { label: "Validee", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
     rejected: { label: "Rejetee", color: "bg-red-100 text-red-700", icon: AlertTriangle },
+  };
+
+  const docTypeConfig = {
+    contract: { label: 'Contrat', color: 'bg-[#1a237e] text-white' },
+    purchase_order: { label: 'Bon de Commande', color: 'bg-[#FFCD00] text-[#1a237e]' },
+    manual: { label: 'Manuel', color: 'bg-gray-200 text-gray-600' },
   };
 
   const [statusFilter, setStatusFilter] = useState("all");
@@ -174,7 +318,7 @@ export function Declarations() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-[#0a2540]">{auth.userRole === "admin" ? "Declarations des Entreprises" : "Mes Declarations Mensuelles"}</h2>
-          <p className="text-sm text-gray-500 mt-1">Declaration mensuelle de sous-traitance ARSP</p>
+          <p className="text-sm text-gray-500 mt-1">Declaration mensuelle de sous-traitance ARSP (1.2% du montant paye)</p>
         </div>
         <div className="flex gap-2">
           {auth.userRole === "admin" && (
@@ -268,19 +412,24 @@ export function Declarations() {
         </div>
       )}
 
+      {/* NEW DECLARATION MODAL */}
       {showNew && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowNew(false)}>
-          <div className="bg-white rounded-2xl max-w-3xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl max-w-4xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-[#0a2540]">Nouvelle declaration mensuelle</h3>
                 <button onClick={() => setShowNew(false)}><X className="w-5 h-5 text-gray-500" /></button>
               </div>
+              
               <div className="space-y-4">
+                {/* Prime company - auto-filled */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="md:col-span-1">
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">Nom de lentreprise principale</label>
-                    <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Nom..." value={newDeclaration.prime_name} onChange={(e) => setNewDeclaration({...newDeclaration, prime_name: e.target.value})} />
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Entreprise principale</label>
+                    <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-[#0a2540] font-medium">
+                      {primeDetails.name || "Chargement..."}
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">Mois</label>
@@ -295,62 +444,175 @@ export function Declarations() {
                     </select>
                   </div>
                 </div>
+
+                {/* Subcontractor lines */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-gray-700">Sous-traitants</label>
-                    <button onClick={addLine} className="flex items-center gap-1 text-xs text-[#007FFF] hover:underline"><Plus className="w-3 h-3" />Ajouter</button>
+                    <label className="text-sm font-medium text-gray-700">Paiements aux sous-traitants</label>
+                    <button onClick={addLine} className="flex items-center gap-1 text-xs text-[#007FFF] hover:underline"><Plus className="w-3 h-3" />Ajouter une ligne</button>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-[#F6F9FC]">
-                        <tr>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Sous-traitant</th>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Activite</th>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Ref contrat</th>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">HTVA (USD)</th>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">ARSP 1.2%</th>
-                          <th className="px-3 py-2"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {lines.map((line, i) => (
-                          <tr key={i}>
-                            <td className="px-3 py-2"><input className="w-full px-2 py-1 border border-gray-200 rounded text-xs" placeholder="Nom..." value={line.subcontractor_name} onChange={(e) => updateLine(i, "subcontractor_name", e.target.value)} /></td>
-                            <td className="px-3 py-2"><input className="w-full px-2 py-1 border border-gray-200 rounded text-xs" placeholder="Activite..." value={line.activity_type} onChange={(e) => updateLine(i, "activity_type", e.target.value)} /></td>
-                            <td className="px-3 py-2"><input className="w-full px-2 py-1 border border-gray-200 rounded text-xs" placeholder="REF-001" value={line.contract_ref} onChange={(e) => updateLine(i, "contract_ref", e.target.value)} /></td>
-                            <td className="px-3 py-2"><input type="number" className="w-full px-2 py-1 border border-gray-200 rounded text-xs" placeholder="0.00" value={line.amount_htva} onChange={(e) => updateLine(i, "amount_htva", e.target.value)} /></td>
-                            <td className="px-3 py-2 text-xs font-medium text-[#0a2540]">${((parseFloat(line.amount_htva) || 0) * 0.012).toFixed(2)}</td>
-                            <td className="px-3 py-2">{lines.length > 1 && <button onClick={() => removeLine(i)}><Trash2 className="w-4 h-4 text-red-400" /></button>}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="bg-[#F6F9FC]">
-                        <tr>
-                          <td colSpan={3} className="px-3 py-2 text-xs font-bold text-right text-[#0a2540]">Total:</td>
-                          <td className="px-3 py-2 text-xs font-bold text-[#0a2540]">${calculateTotal().toFixed(2)}</td>
-                          <td className="px-3 py-2 text-xs font-bold text-red-600">${calculateArsp().toFixed(2)}</td>
-                          <td></td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                  
+                  <div className="space-y-3">
+                    {lines.map((line, i) => (
+                      <div key={i} className="bg-[#F6F9FC] rounded-xl p-4 space-y-3">
+                        {/* Line header with document type badge */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-500">Ligne {i + 1}</span>
+                            {!line.manualEntry && line.document_type && (
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${docTypeConfig[line.document_type]?.color || docTypeConfig.manual.color}`}>
+                                {docTypeConfig[line.document_type]?.label || 'Manuel'}
+                              </span>
+                            )}
+                            {line.manualEntry && (
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${docTypeConfig.manual.color}`}>
+                                {docTypeConfig.manual.label}
+                              </span>
+                            )}
+                          </div>
+                          {lines.length > 1 && (
+                            <button onClick={() => removeLine(i)} className="text-red-400 hover:text-red-600">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Contract selector OR manual entry toggle */}
+                        <div className="flex items-center gap-2 mb-2">
+                          {!line.manualEntry && primeContracts.length > 0 ? (
+                            <div className="flex-1">
+                              <label className="text-xs text-gray-500 mb-1 block">Selectionner un contrat/BC</label>
+                              <select 
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]"
+                                value={line.contract_id || ""}
+                                onChange={(e) => {
+                                  if (e.target.value === "manual") {
+                                    toggleManualEntry(i);
+                                  } else {
+                                    selectContractForLine(i, e.target.value);
+                                  }
+                                }}
+                              >
+                                <option value="">-- Choisir --</option>
+                                {primeContracts.map(c => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.subcontractor_name || c.subcontractor_email} | {c.reference} | {c.document_type === 'contract' ? 'Contrat' : 'BC'} | USD {c.value}
+                                  </option>
+                                ))}
+                                <option value="manual">-- Saisie manuelle --</option>
+                              </select>
+                            </div>
+                          ) : (
+                            <button 
+                              onClick={() => {
+                                const updated = [...lines];
+                                updated[i] = { ...updated[i], manualEntry: false };
+                                setLines(updated);
+                              }}
+                              className="flex items-center gap-1 text-xs text-[#007FFF] hover:underline"
+                            >
+                              <Link2 className="w-3 h-3" />
+                              Lier a un contrat/BC existant
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Fields */}
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                          <div className="md:col-span-3">
+                            <label className="text-xs text-gray-500 mb-1 block">Sous-traitant</label>
+                            <input 
+                              className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm" 
+                              placeholder="Nom..." 
+                              value={line.subcontractor_name} 
+                              onChange={(e) => updateLine(i, "subcontractor_name", e.target.value)} 
+                              readOnly={!line.manualEntry && line.contract_id}
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="text-xs text-gray-500 mb-1 block">Activite</label>
+                            <input 
+                              className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm" 
+                              placeholder="Activite..." 
+                              value={line.activity_type} 
+                              onChange={(e) => updateLine(i, "activity_type", e.target.value)} 
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="text-xs text-gray-500 mb-1 block">Ref contrat</label>
+                            <input 
+                              className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm" 
+                              placeholder="REF-001" 
+                              value={line.contract_ref} 
+                              onChange={(e) => updateLine(i, "contract_ref", e.target.value)} 
+                              readOnly={!line.manualEntry && line.contract_id}
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="text-xs text-gray-500 mb-1 block">Valeur contrat (USD)</label>
+                            <input 
+                              type="number" 
+                              className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm bg-gray-50" 
+                              placeholder="0.00" 
+                              value={line.amount_htva} 
+                              readOnly
+                            />
+                          </div>
+                          <div className="md:col-span-3">
+                            <label className="text-xs text-emerald-700 font-medium mb-1 block">Montant paye ce mois (USD)</label>
+                            <input 
+                              type="number" 
+                              className="w-full px-2 py-1.5 border border-emerald-200 rounded text-sm focus:border-emerald-500 outline-none" 
+                              placeholder="0.00" 
+                              value={line.amount_paid} 
+                              onChange={(e) => updateLine(i, "amount_paid", e.target.value)} 
+                            />
+                          </div>
+                        </div>
+
+                        {/* ARSP for this line */}
+                        <div className="flex justify-end">
+                          <div className="text-xs text-gray-500">
+                            ARSP sur montant paye: <span className="font-semibold text-red-600">${((parseFloat(line.amount_paid) || parseFloat(line.amount_htva) || 0) * 0.012).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
+
+                {/* Totals */}
+                <div className="bg-[#0a2540] rounded-xl p-4 text-white">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-xs text-gray-300 mb-1">Total valeur contrats</p>
+                      <p className="text-lg font-bold">${calculateTotalHtva().toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-300 mb-1">Total paye ce mois</p>
+                      <p className="text-lg font-bold text-emerald-300">${calculateTotalPaid().toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-amber-300 mb-1">ARSP du (1.2%)</p>
+                      <p className="text-xl font-bold text-amber-400">${calculateArsp().toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Proof upload */}
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Preuve de paiement</label>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Preuve de paiement ARSP</label>
                   <div className={"border-2 border-dashed rounded-xl p-4 text-center " + (proofFile ? "border-emerald-400 bg-emerald-50" : "border-gray-300 hover:border-[#007FFF]")}>
                     <Upload className="w-5 h-5 text-gray-400 mx-auto mb-1" />
                     <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" id="proof-upload" onChange={(e) => setProofFile(e.target.files ? e.target.files[0] : null)} />
-                    <label htmlFor="proof-upload" className="cursor-pointer text-xs text-[#007FFF] hover:underline">{proofFile ? proofFile.name : "Cliquer pour uploader"}</label>
+                    <label htmlFor="proof-upload" className="cursor-pointer text-xs text-[#007FFF] hover:underline">{proofFile ? proofFile.name : "Cliquer pour uploader la preuve de paiement"}</label>
                   </div>
                 </div>
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                  <p className="text-sm font-semibold text-amber-800 mb-1">Montant du a lARSP</p>
-                  <p className="text-2xl font-bold text-amber-700">${calculateArsp().toFixed(2)} USD</p>
-                  <p className="text-xs text-amber-600 mt-1">1.2% du total HTVA de ${calculateTotal().toFixed(2)} USD</p>
-                </div>
+
+                {/* Submit buttons */}
                 <div className="flex gap-3">
                   <button onClick={() => handleSubmit("draft")} disabled={submitting} className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50">Enregistrer brouillon</button>
-                  <button onClick={() => handleSubmit("submitted")} disabled={submitting || !newDeclaration.prime_name} className="flex-1 py-2.5 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC] disabled:opacity-50">{submitting ? "Envoi..." : "Soumettre la declaration"}</button>
+                  <button onClick={() => handleSubmit("submitted")} disabled={submitting || !primeDetails.name} className="flex-1 py-2.5 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC] disabled:opacity-50">{submitting ? "Envoi..." : "Soumettre la declaration"}</button>
                 </div>
               </div>
             </div>
@@ -358,9 +620,10 @@ export function Declarations() {
         </div>
       )}
 
+      {/* DETAIL MODAL */}
       {selectedDeclaration && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedDeclaration(null)}>
-          <div className="bg-white rounded-2xl max-w-3xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl max-w-4xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -373,34 +636,44 @@ export function Declarations() {
                 <span className={"px-2 py-0.5 rounded-full text-xs font-bold uppercase " + (statusConfig[selectedDeclaration.status] ? statusConfig[selectedDeclaration.status].color : "")}>
                   {statusConfig[selectedDeclaration.status] ? statusConfig[selectedDeclaration.status].label : ""}
                 </span>
+                
                 {declarationLines.length > 0 && (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-[#F6F9FC]">
                         <tr>
+                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Type</th>
                           <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Sous-traitant</th>
                           <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Activite</th>
                           <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Ref</th>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">HTVA (USD)</th>
+                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Valeur (USD)</th>
+                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">Paye (USD)</th>
                           <th className="text-left px-3 py-2 text-xs font-semibold text-gray-600">ARSP (USD)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {declarationLines.map((line) => (
                           <tr key={line.id}>
+                            <td className="px-3 py-2">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${docTypeConfig[line.document_type]?.color || docTypeConfig.manual.color}`}>
+                                {docTypeConfig[line.document_type]?.label || 'Manuel'}
+                              </span>
+                            </td>
                             <td className="px-3 py-2 text-xs">{line.subcontractor_name}</td>
                             <td className="px-3 py-2 text-xs">{line.activity_type}</td>
                             <td className="px-3 py-2 text-xs">{line.contract_ref}</td>
                             <td className="px-3 py-2 text-xs">${parseFloat(line.amount_htva).toFixed(2)}</td>
+                            <td className="px-3 py-2 text-xs font-medium text-emerald-600">${parseFloat(line.amount_paid || line.amount_htva).toFixed(2)}</td>
                             <td className="px-3 py-2 text-xs font-medium text-red-600">${parseFloat(line.amount_arsp).toFixed(2)}</td>
                           </tr>
                         ))}
                       </tbody>
-                      <tfoot className="bg-[#F6F9FC]">
+                      <tfoot className="bg-[#0a2540] text-white">
                         <tr>
-                          <td colSpan={3} className="px-3 py-2 text-xs font-bold text-right text-[#0a2540]">Total:</td>
-                          <td className="px-3 py-2 text-xs font-bold text-[#0a2540]">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_htva), 0).toFixed(2)}</td>
-                          <td className="px-3 py-2 text-xs font-bold text-red-600">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_arsp), 0).toFixed(2)}</td>
+                          <td colSpan={4} className="px-3 py-2 text-xs font-bold text-right">Totaux:</td>
+                          <td className="px-3 py-2 text-xs font-bold">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_htva), 0).toFixed(2)}</td>
+                          <td className="px-3 py-2 text-xs font-bold text-emerald-300">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_paid || l.amount_htva), 0).toFixed(2)}</td>
+                          <td className="px-3 py-2 text-xs font-bold text-amber-400">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_arsp), 0).toFixed(2)}</td>
                         </tr>
                       </tfoot>
                     </table>
