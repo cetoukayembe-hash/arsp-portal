@@ -89,8 +89,6 @@ export function Contracts() {
   async function fetchContracts() {
     setLoading(true);
     
-    // For subcontractors, fetch contracts where they are the subcontractor
-    // For primes, fetch contracts where they are the prime
     let query = supabase.from('contracts').select('*').order('created_at', { ascending: false });
     
     if (auth.userRole === 'subcontractor') {
@@ -159,7 +157,6 @@ export function Contracts() {
       return;
     }
 
-    // Validation
     if (!newContract.title) {
       alert('Veuillez entrer un titre');
       return;
@@ -263,6 +260,17 @@ export function Contracts() {
     }
   }
 
+  async function acceptContract(id: string) {
+    const { error } = await supabase.from('contracts').update({ status: 'active' }).eq('id', id);
+    if (!error) {
+      setSelectedContract((prev: any) => ({ ...prev, status: 'active' }));
+      fetchContracts();
+      alert('Document accepte avec succes!');
+    } else {
+      alert('Erreur: ' + error.message);
+    }
+  }
+
   const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
     draft: { label: 'Brouillon', color: 'bg-gray-100 text-gray-600', icon: FileText },
     active: { label: 'Actif', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2 },
@@ -279,9 +287,9 @@ export function Contracts() {
   // Render details based on viewer role
   function renderContractDetails(contract: any) {
     const isSubcontractor = auth.userRole === 'subcontractor';
+    const isDraft = contract.status === 'draft';
     
     if (isSubcontractor) {
-      // Subcontractor sees PRIME company details (who hired them)
       return (
         <div className="space-y-3">
           <div className="bg-[#F6F9FC] rounded-lg p-4 grid grid-cols-2 gap-3 text-sm">
@@ -319,6 +327,22 @@ export function Contracts() {
             </div>
           </div>
 
+          {/* Description */}
+          {contract.description && (
+            <div className="bg-[#F6F9FC] rounded-lg p-4">
+              <h4 className="text-sm font-medium text-[#0a2540] mb-1">Description</h4>
+              <p className="text-sm text-gray-600">{contract.description}</p>
+            </div>
+          )}
+
+          {/* PO Items */}
+          {contract.items && (
+            <div className="bg-[#F6F9FC] rounded-lg p-4">
+              <h4 className="text-sm font-medium text-[#0a2540] mb-1">Articles / Services</h4>
+              <p className="text-sm text-gray-600">{contract.items}</p>
+            </div>
+          )}
+
           {/* Progress for contracts */}
           {contract.document_type === 'contract' && (
             <div className="bg-[#F6F9FC] rounded-lg p-4">
@@ -331,10 +355,38 @@ export function Contracts() {
               </div>
             </div>
           )}
+
+          {/* Accept button - only for draft documents */}
+          {isDraft && (
+            <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+              <p className="text-sm text-amber-800 mb-3">
+                Ce document est en attente de votre approbation. En acceptant, vous confirmez votre engagement.
+              </p>
+              <button
+                onClick={() => {
+                  if (confirm('Etes-vous sur de vouloir accepter ce document?')) {
+                    acceptContract(contract.id);
+                  }
+                }}
+                className="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Accepter le {contract.document_type === 'purchase_order' ? 'bon de commande' : 'contrat'}
+              </button>
+            </div>
+          )}
+
+          {/* Already accepted message */}
+          {!isDraft && (
+            <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-200 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              <span className="text-sm text-emerald-800">Document accepte et actif</span>
+            </div>
+          )}
         </div>
       );
     } else {
-      // Prime sees SUBCONTRACTOR details (who they hired)
+      // Prime sees SUBCONTRACTOR details
       return (
         <div className="space-y-3">
           <div className="bg-[#F6F9FC] rounded-lg p-4 grid grid-cols-2 gap-3 text-sm">
@@ -457,7 +509,6 @@ export function Contracts() {
             const type = typeConfig[c.document_type] || typeConfig.contract;
             const Icon = status.icon;
             
-            // Show different info in list based on role
             const counterpartyName = auth.userRole === 'subcontractor' 
               ? (c.prime_name || c.prime_email) 
               : (c.subcontractor_name || c.subcontractor_email);
@@ -505,7 +556,7 @@ export function Contracts() {
         </div>
       )}
 
-      {/* Create Modal - only for primes */}
+      {/* Create Modal */}
       {showCreate && auth.userRole === 'prime' && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
           <div className="bg-white rounded-2xl max-w-2xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -515,7 +566,6 @@ export function Contracts() {
                 <button onClick={() => setShowCreate(false)}><X className="w-5 h-5 text-gray-500" /></button>
               </div>
 
-              {/* Document Type Toggle */}
               <div className="flex gap-2 mb-4 p-1 bg-gray-100 rounded-lg">
                 <button
                   onClick={() => setDocumentType('contract')}
@@ -536,7 +586,6 @@ export function Contracts() {
               </div>
 
               <div className="space-y-4">
-                {/* Prime company info display */}
                 {primeDetails && (
                   <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
                     <div className="text-xs text-gray-500 mb-1">Votre entreprise (mandante)</div>
@@ -559,7 +608,6 @@ export function Contracts() {
                   onChange={(e) => setNewContract({ ...newContract, reference: e.target.value })} 
                 />
 
-                {/* Subcontractor Search */}
                 <div className="relative">
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-medium text-gray-500">Sous-traitant</label>
