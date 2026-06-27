@@ -3,8 +3,8 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { Download, Calendar, TrendingUp, Users, FileCheck, AlertTriangle, CheckCircle2, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import jsPDF from 'jspdf';
-import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
+import * as XLSX from 'xlsx';
 
 // ARSP Brand Colors
 const COLORS = ['#1a237e', '#007FFF', '#FFCD00', '#EF4135', '#6b7280', '#10B981', '#8b5cf6', '#f59e0b'];
@@ -133,7 +133,6 @@ export function Analytics() {
   const activeContracts = contracts.filter(c => c.status === 'active').length;
 
   // CSV Export
-    // CSV Export
   const handleExportCSV = () => {
     const headers = ['Entreprise', 'Email', 'Secteur', 'Province', 'Role', 'Capital Congolais', 'Statut', 'Date Creation'];
     const rows = enterprises.map(e => [
@@ -192,16 +191,7 @@ export function Analytics() {
     ];
 
     const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
-    
-    // Style the header
     summaryWs['!cols'] = [{ wch: 30 }, { wch: 15 }];
-    if (summaryWs['A1']) {
-      summaryWs['A1'].s = { 
-        font: { bold: true, sz: 16, color: { rgb: '1a237e' } },
-        fill: { fgColor: { rgb: 'F6F9FC' } }
-      };
-    }
-
     XLSX.utils.book_append_sheet(wb, summaryWs, 'Resume');
 
     // Enterprises sheet
@@ -218,26 +208,10 @@ export function Analytics() {
     ]);
 
     const enterpriseWs = XLSX.utils.aoa_to_sheet([enterpriseHeaders, ...enterpriseRows]);
-    
-    // Style header row
-    const headerStyle = { 
-      font: { bold: true, color: { rgb: 'FFFFFF' } },
-      fill: { fgColor: { rgb: '1a237e' } }
-    };
-    
-    const range = XLSX.utils.decode_range(enterpriseWs['!ref'] || 'A1');
-    for (let col = range.s.c; col <= range.e.c; col++) {
-      const cellRef = XLSX.utils.encode_cell({ r: 0, c: col });
-      if (enterpriseWs[cellRef]) {
-        enterpriseWs[cellRef].s = headerStyle;
-      }
-    }
-
     enterpriseWs['!cols'] = [
       { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, 
       { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
     ];
-
     XLSX.utils.book_append_sheet(wb, enterpriseWs, 'Entreprises');
 
     // Sector distribution sheet
@@ -254,17 +228,11 @@ export function Analytics() {
     ]);
     XLSX.utils.book_append_sheet(wb, provinceWs, 'Provinces');
 
-    // Save
     XLSX.writeFile(wb, `ARSP_Rapport_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
-    
-
-    
-
-    
 
   // PDF Export
-      const handleExportPDF = async () => {
+  const handleExportPDF = async () => {
     if (!reportRef.current) return;
     
     try {
@@ -296,11 +264,9 @@ export function Analytics() {
       let heightLeft = scaledHeight;
       let position = 0;
       
-      // Add first page
       pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, scaledHeight);
       heightLeft -= pdfHeight;
       
-      // Add additional pages if content overflows
       while (heightLeft > 0) {
         position = heightLeft - scaledHeight;
         pdf.addPage();
@@ -314,23 +280,14 @@ export function Analytics() {
       alert('Erreur lors de l\'export PDF');
     }
   };
-    
-    
-    
-        
-      
-      
-      
-      
-      
-     
-    
-    
-    
-      
-      
-      
-      
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-12 h-12 border-4 border-[#1a237e] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -346,45 +303,33 @@ export function Analytics() {
             className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white outline-none"
           >
             <option value="7jours">7 derniers jours</option>
-            <o// Add additional pages if content overflows
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', imgX, position, imgWidth * ratio, imgHeight * ratio);
-        heightLption value="30jours">30 derniers jours</option>
+            <option value="30jours">30 derniers jours</option>
             <option value="12mois">12 derniers mois</option>
           </select>
           <button 
-  onClick={handleExportCSV}
-  className="flex items-center gap-2 px-4 py-2 bg-[#1a237e] text-white rounded-lg text-sm font-medium hover:bg-[#0d1642]"
->
-  <Download className="w-4 h-4" />
-  CSV
-</button>
-<button 
-  onClick={handleExportExcel}
-  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
->
-  <FileText className="w-4 h-4" />
-  Excel
-</button>
-            
-            
-          
-            
-            
-          
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-[#1a237e] text-white rounded-lg text-sm font-medium hover:bg-[#0d1642]"
+          >
+            <Download className="w-4 h-4" />
+            CSV
+          </button>
+          <button 
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
+          >
+            <FileText className="w-4 h-4" />
+            Excel
+          </button>
           <button 
             onClick={handleExportPDF}
             className="flex items-center gap-2 px-4 py-2 border border-[#1a237e] text-[#1a237e] rounded-lg text-sm font-medium hover:bg-[#1a237e] hover:text-white"
           >
             <FileText className="w-4 h-4" />
-            Telecharger PDF
+            PDF
           </button>
         </div>
       </div>
 
-      {/* Report content for PDF capture */}
       <div ref={reportRef}>
         {/* KPI Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -469,13 +414,13 @@ export function Analytics() {
 
           <div className="bg-white rounded-xl p-5 card-shadow">
             <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition par secteur (reel)</h3>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie 
                   data={pieData.length > 0 ? pieData : [{ name: 'Aucune donnee', value: 1 }]} 
                   cx="50%" cy="50%" 
-                  innerRadius={60} 
-                  outerRadius={90} 
+                  innerRadius={80} 
+                  outerRadius={120} 
                   paddingAngle={4} 
                   dataKey="value"
                   label={({ name, value }) => `${name}: ${value}`}
@@ -506,13 +451,13 @@ export function Analytics() {
 
           <div className="bg-white rounded-xl p-5 card-shadow">
             <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition par role</h3>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie 
                   data={roleData.length > 0 ? roleData : [{ name: 'Aucune donnee', value: 1 }]} 
                   cx="50%" cy="50%" 
-                  innerRadius={60} 
-                  outerRadius={90} 
+                  innerRadius={80} 
+                  outerRadius={120} 
                   paddingAngle={4} 
                   dataKey="value"
                   label={({ name, value }) => `${name}: ${value}`}
@@ -530,13 +475,13 @@ export function Analytics() {
 
           <div className="bg-white rounded-xl p-5 card-shadow">
             <h3 className="text-sm font-semibold text-[#1a237e] mb-4">Repartition par statut</h3>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie 
                   data={statusData.length > 0 ? statusData : [{ name: 'Aucune donnee', value: 1 }]} 
                   cx="50%" cy="50%" 
-                  innerRadius={60} 
-                  outerRadius={90} 
+                  innerRadius={80} 
+                  outerRadius={120} 
                   paddingAngle={4} 
                   dataKey="value"
                   label={({ name, value }) => `${name}: ${value}`}
