@@ -34,21 +34,39 @@ export function Contracts() {
     setLoading(false);
   }
 
-  async function handleCreateContract() {
+    async function handleCreateContract() {
+    console.log('Creating contract...', newContract);
+    
+    // Validation
+    if (!newContract.title || !newContract.subcontractor_email || !newContract.value) {
+      alert('Veuillez remplir tous les champs obligatoires: Titre, Email sous-traitant, Valeur');
+      return;
+    }
+
     let fileUrl = '';
     if (contractFile) {
+      console.log('Uploading file...', contractFile.name);
       const fileName = 'contracts/' + Date.now() + '_' + contractFile.name;
-      const { data: uploadData } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('documents')
         .upload(fileName, contractFile);
+      
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        alert('Erreur upload: ' + uploadError.message);
+        return;
+      }
+      
       if (uploadData) {
         const { data: urlData } = supabase.storage
           .from('documents')
           .getPublicUrl(fileName);
         fileUrl = urlData.publicUrl;
+        console.log('File uploaded:', fileUrl);
       }
     }
-    const { error } = await supabase.from('contracts').insert([{
+
+    const contractData = {
       title: newContract.title,
       reference: newContract.reference || 'CONT-' + Date.now(),
       subcontractor_email: newContract.subcontractor_email,
@@ -61,17 +79,30 @@ export function Contracts() {
       document_url: fileUrl,
       status: 'draft',
       progress: 0,
-    }]);
-    if (!error) {
-      setShowCreate(false);
-      setContractFile(null);
-      setNewContract({ title: '', reference: '', subcontractor_email: '', value: '', start_date: '', end_date: '', description: '' });
-      fetchContracts();
-    } else {
+    };
+    
+    console.log('Inserting contract:', contractData);
+
+    const { error } = await supabase.from('contracts').insert([contractData]);
+    
+    if (error) {
       console.error('Contract creation error:', error);
       alert('Erreur lors de la creation du contrat: ' + error.message);
+      return;
     }
+    
+    console.log('Contract created successfully');
+    setShowCreate(false);
+    setContractFile(null);
+    setNewContract({ title: '', reference: '', subcontractor_email: '', value: '', start_date: '', end_date: '', description: '' });
+    fetchContracts();
   }
+    
+      
+    
+    
+    
+  
 
   async function updateProgress(id: string, progress: number) {
     const { error } = await supabase.from('contracts').update({ progress }).eq('id', id);
