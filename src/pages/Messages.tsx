@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Search, Plus, X, Circle } from 'lucide-react';
+import { Send, Search, Plus, X, Circle, Paperclip, FileText, Download } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/App';
 
@@ -15,8 +15,10 @@ export function Messages() {
   const [userQuery, setUserQuery] = useState('');
   const [newConvEmail, setNewConvEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const subscriptionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentUserEmail = auth.userEmail || '';
   const currentUserName = auth.userName || auth.userEmail?.split('@')[0] || 'Utilisateur';
@@ -79,7 +81,7 @@ export function Messages() {
             try {
               const { data: lastMsg } = await supabase
                 .from('messages')
-                .select('content, created_at, sender_email')
+                .select('content, created_at, sender_email, file_name')
                 .eq('conversation_id', conv.id)
                 .order('created_at', { ascending: false })
                 .limit(1)
@@ -186,16 +188,64 @@ export function Messages() {
     }
   }
 
-  async function handleSend() {
-    if (!newMessage.trim() || !selectedConv) return;
+  async function handleFileUpload(file: File) {
+    if (!file || !selectedConv) return null;
+
+    setUploadingFile(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${selectedConv}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('message_attachments')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        alert('Erreur lors du téléchargement du fichier');
+        setUploadingFile(false);
+        return null;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('message_attachments')
+        .getPublicUrl(filePath);
+
+      setUploadingFile(false);
+      return { url: urlData.publicUrl, name: file.name };
+    } catch (err) {
+      console.error('Error uploading file:', err);
+      alert('Erreur lors du téléchargement du fichier');
+      setUploadingFile(false);
+      return null;
+    }
+  }
+
+  async function handleSend(fileToUpload?: File) {
+    if (!selectedConv) return;
+    if (!newMessage.trim() && !fileToUpload) return;
+
+    let fileUrl = null;
+    let fileName = null;
+
+    if (fileToUpload) {
+      const uploadResult = await handleFileUpload(fileToUpload);
+      if (uploadResult) {
+        fileUrl = uploadResult.url;
+        fileName = uploadResult.name;
+      }
+    }
 
     try {
       const { error } = await supabase.from('messages').insert([{
         conversation_id: selectedConv,
         sender_email: currentUserEmail,
         sender_name: currentUserName,
-        content: newMessage.trim(),
+        content: newMessage.trim() || (fileName ? `Fichier: ${fileName}` : ''),
         read: false,
+        file_url: fileUrl,
+        file_name: fileName,
       }]);
 
       if (error) {
@@ -225,7 +275,6 @@ export function Messages() {
     }
 
     try {
-      // Check if conversation already exists
       const { data: existing, error: existingError } = await supabase
         .from('conversations')
         .select('id')
@@ -334,7 +383,7 @@ export function Messages() {
                   {conv.lastMessage ? (
                     <p className="text-xs text-gray-500 truncate mt-0.5">
                       {conv.lastMessage.sender_email === currentUserEmail ? 'Vous: ' : ''}
-                      {conv.lastMessage.content}
+                      {conv.lastMessage.file_name ? `📎 ${conv.lastMessage.file_name}` : conv.lastMessage.content}
                     </p>
                   ) : (
                     <p className="text-xs text-gray-400 mt-0.5">Nouvelle conversation</p>
@@ -368,12 +417,33 @@ export function Messages() {
                 <div className="text-center text-gray-400 text-sm mt-8">Aucun message. Démarrez la conversation!</div>
               ) : messages.map((msg) => (
                 <div key={msg.id} className={`flex gap-2 ${msg.sender_email === currentUserEmail ? 'flex-row-reverse' : ''}`}>
-                  <div className={`max-w-xs px-3 py-2 rounded-xl text-sm shadow-sm ${
+                  <div className={`max-w-sm px-3 py-2 rounded-xl text-sm shadow-sm ${
                     msg.sender_email === currentUserEmail
                       ? 'bg-[#007FFF] text-white rounded-tr-none'
                       : 'bg-white text-gray-800 rounded-tl-none'
                   }`}>
-                    <p>{msg.content}</p>
+                    {msg.file_url ? (
+                      <div className="space-y-2">
+                        <div className={`flex items-center gap-2 p-2 rounded-lg ${msg.sender_email === currentUserEmail ? 'bg-blue-600' : 'bg-gray-100'}`}>
+                          <FileText className="w-5 h-5 shrink-0" />
+                          <span className="text-xs truncate flex-1">{msg.file_name}</span>
+                          <a 
+                            href={msg.file_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1 rounded hover:bg-white/20"
+                          >
+                            <Download className="w-4 h-4" />
+                          </a>
+                        </div>
+                        {msg.content && msg.content !== `Fichier: ${msg.file_name}` && (
+                          <p>{msg.content}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p>{msg.content}</p>
+                    )}
                     <p className={`text-[10px] mt-1 ${msg.sender_email === currentUserEmail ? 'text-blue-100' : 'text-gray-400'}`}>
                       {new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                       {msg.sender_email === currentUserEmail && (
@@ -388,14 +458,37 @@ export function Messages() {
 
             <div className="p-4 border-t border-gray-200 flex gap-2">
               <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleSend(file);
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }}
+              />
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingFile}
+                className="p-2 text-gray-400 hover:text-[#007FFF] hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                title="Joindre un fichier"
+              >
+                <Paperclip className="w-5 h-5" />
+              </button>
+              <input
                 type="text"
-                placeholder="Écrire un message..."
+                placeholder={uploadingFile ? "Téléchargement en cours..." : "Écrire un message..."}
                 className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                disabled={uploadingFile}
               />
-              <button onClick={handleSend} className="p-2 bg-[#007FFF] text-white rounded-lg hover:bg-[#0066CC]">
+              <button 
+                onClick={() => handleSend()} 
+                disabled={uploadingFile || (!newMessage.trim() && !uploadingFile)}
+                className="p-2 bg-[#007FFF] text-white rounded-lg hover:bg-[#0066CC] disabled:opacity-50"
+              >
                 <Send className="w-5 h-5" />
               </button>
             </div>
