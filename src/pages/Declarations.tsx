@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { Plus, X, FileText, CheckCircle2, Clock, AlertTriangle, Trash2, Upload, Link2 } from "lucide-react";
-import { ContractDetailModal } from '@/components/ContractDetailModal';
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/App";
 
@@ -26,8 +25,6 @@ export function Declarations() {
   const [selectedDeclaration, setSelectedDeclaration] = useState(null);
   const [declarationLines, setDeclarationLines] = useState([]);
   const [linesLoading, setLinesLoading] = useState(false);
-  const [selectedContract, setSelectedContract] = useState<any>(null);
-  const [showContractModal, setShowContractModal] = useState(false);
   const [proofFile, setProofFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [isOverdue, setIsOverdue] = useState(false);
@@ -119,19 +116,6 @@ export function Declarations() {
     
     if (data) setDeclarationLines(data);
     setLinesLoading(false);
-  }
-
-  async function openContractDetail(contractId: string) {
-    const { data } = await supabase
-      .from('contracts')
-      .select('*')
-      .eq('id', contractId)
-      .single();
-    
-    if (data) {
-      setSelectedContract(data);
-      setShowContractModal(true);
-    }
   }
 
   async function exportToExcel() {
@@ -290,6 +274,7 @@ export function Declarations() {
         activity_type: l.activity_type || (l.document_type === 'contract' ? 'Contrat' : l.document_type === 'purchase_order' ? 'Bon de Commande' : 'Prestation'),
         contract_ref: l.contract_ref,
         amount_htva: parseFloat(l.amount_htva),
+        amount_paid: parseFloat(l.amount_paid) || parseFloat(l.amount_htva),
         amount_arsp: (parseFloat(l.amount_paid) || parseFloat(l.amount_htva) || 0) * 0.012,
         contract_id: l.contract_id,
         document_type: l.document_type,
@@ -740,19 +725,9 @@ export function Declarations() {
                       {declarationLines.map((line) => (
                         <tr key={line.id} className="hover:bg-gray-50">
                           <td className="px-3 py-2">
-                            <div className="flex items-center gap-1">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${docTypeConfig[line.document_type]?.color || docTypeConfig.manual.color}`}>
-                                {docTypeConfig[line.document_type]?.label || 'Manuel'}
-                              </span>
-                              {line.contract_id && (
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); openContractDetail(line.contract_id); }}
-                                  className="text-[10px] text-[#007FFF] hover:underline ml-1"
-                                >
-                                  Voir contrat
-                                </button>
-                              )}
-                            </div>
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${docTypeConfig[line.document_type]?.color || docTypeConfig.manual.color}`}>
+                              {docTypeConfig[line.document_type]?.label || 'Manuel'}
+                            </span>
                           </td>
                           <td className="px-3 py-2 text-xs font-medium text-[#0a2540]">{line.subcontractor_name}</td>
                           <td className="px-3 py-2 text-xs text-gray-500">{line.activity_type}</td>
@@ -848,21 +823,6 @@ export function Declarations() {
           </div>
         </div>
       )}
-
-      {/* Contract Detail Modal */}
-      {showContractModal && selectedContract && (
-        <ContractDetailModal 
-          contract={selectedContract} 
-          onClose={() => setShowContractModal(false)}
-          onUpdate={() => {
-            if (selectedDeclaration) {
-              fetchDeclarationLines(selectedDeclaration.id);
-            }
-          }}
-        />
-      )}
     </div>
   );
 }
-
-
