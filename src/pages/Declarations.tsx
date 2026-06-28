@@ -4,7 +4,7 @@ import { Plus, X, FileText, CheckCircle2, Clock, AlertTriangle, Trash2, Upload, 
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/App";
 
-const months = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+const months = ["Janvier","Fevrier","Mars","Avril","Mai","Juin","Juillet","Aout","Septembre","Octobre","Novembre","Decembre"];
 
 interface ContractOption {
   id: string;
@@ -31,17 +31,17 @@ export function Declarations() {
   const [primeDetails, setPrimeDetails] = useState({ name: "", email: "" });
   const [editingDeclarationId, setEditingDeclarationId] = useState(null);
 
-  const [newDeclaration, setNewDeclaration] = useState({
-    prime_name: "",
-    month: months[new Date().getMonth()],
-    year: new Date().getFullYear()
+  const [newDeclaration, setNewDeclaration] = useState({ 
+    prime_name: "", 
+    month: months[new Date().getMonth()], 
+    year: new Date().getFullYear() 
   });
 
-  const [lines, setLines] = useState([{
-    subcontractor_name: "",
-    activity_type: "",
-    contract_ref: "",
-    amount_htva: "",
+  const [lines, setLines] = useState([{ 
+    subcontractor_name: "", 
+    activity_type: "", 
+    contract_ref: "", 
+    amount_htva: "", 
     contract_id: null,
     document_type: 'manual',
     amount_paid: "",
@@ -56,9 +56,9 @@ export function Declarations() {
   const [showReports, setShowReports] = useState(false);
   const [reportData, setReportData] = useState(null);
 
-  useEffect(() => {
-    fetchDeclarations();
-    checkOverdue();
+  useEffect(() => { 
+    fetchDeclarations(); 
+    checkOverdue(); 
     fetchPrimeDetails();
     fetchPrimeContracts();
   }, []);
@@ -278,13 +278,13 @@ export function Declarations() {
           "Entreprise": d.prime_name,
           "Email": d.prime_email,
           "Mois": d.month,
-          "Année": d.year,
+          "Annee": d.year,
           "Statut": d.status,
           "Sous-traitant": "",
-          "Type de document": "",
-          "Réf. contrat": "",
+          "Type document": "",
+          "Ref contrat": "",
           "Valeur contrat (USD)": "",
-          "Montant payé (USD)": "",
+          "Montant paye (USD)": "",
           "Montant ARSP (USD)": "",
           "Soumis le": d.submitted_at ? new Date(d.submitted_at).toLocaleDateString("fr-FR") : "",
         });
@@ -294,13 +294,13 @@ export function Declarations() {
             "Entreprise": i === 0 ? d.prime_name : "",
             "Email": i === 0 ? d.prime_email : "",
             "Mois": i === 0 ? d.month : "",
-            "Année": i === 0 ? d.year : "",
+            "Annee": i === 0 ? d.year : "",
             "Statut": i === 0 ? d.status : "",
             "Sous-traitant": l.subcontractor_name,
-            "Type de document": l.document_type === 'contract' ? 'Contrat' : l.document_type === 'purchase_order' ? 'Bon de Commande' : 'Manuel',
-            "Réf. contrat": l.contract_ref,
+            "Type document": l.document_type === 'contract' ? 'Contrat' : l.document_type === 'purchase_order' ? 'Bon de Commande' : 'Manuel',
+            "Ref contrat": l.contract_ref,
             "Valeur contrat (USD)": parseFloat(l.amount_htva).toFixed(2),
-            "Montant payé (USD)": parseFloat(l.amount_paid || l.amount_htva).toFixed(2),
+            "Montant paye (USD)": parseFloat(l.amount_paid || l.amount_htva).toFixed(2),
             "Montant ARSP (USD)": parseFloat(l.amount_arsp).toFixed(2),
             "Soumis le": i === 0 && d.submitted_at ? new Date(d.submitted_at).toLocaleDateString("fr-FR") : "",
           });
@@ -314,25 +314,25 @@ export function Declarations() {
     XLSX.writeFile(wb, "declarations_arsp_" + new Date().toISOString().split("T")[0] + ".xlsx");
   }
 
-  function addLine() {
-    setLines([...lines, {
-      subcontractor_name: "",
-      activity_type: "",
-      contract_ref: "",
-      amount_htva: "",
+  function addLine() { 
+    setLines([...lines, { 
+      subcontractor_name: "", 
+      activity_type: "", 
+      contract_ref: "", 
+      amount_htva: "", 
       contract_id: null,
       document_type: 'manual',
       amount_paid: "",
       manualEntry: true,
-    }]);
+    }]); 
   }
 
   function removeLine(index) { setLines(lines.filter((_, i) => i !== index)); }
 
-  function updateLine(index, field, value) {
-    const updated = [...lines];
-    updated[index] = { ...updated[index], [field]: value };
-    setLines(updated);
+  function updateLine(index, field, value) { 
+    const updated = [...lines]; 
+    updated[index] = { ...updated[index], [field]: value }; 
+    setLines(updated); 
   }
 
   function selectContractForLine(index, contractId: string) {
@@ -368,16 +368,16 @@ export function Declarations() {
     setLines(updated);
   }
 
-  function calculateTotalHtva() {
-    return lines.reduce((sum, line) => sum + (parseFloat(line.amount_htva) || 0), 0);
+  function calculateTotalHtva() { 
+    return lines.reduce((sum, line) => sum + (parseFloat(line.amount_htva) || 0), 0); 
   }
 
-  function calculateTotalPaid() {
-    return lines.reduce((sum, line) => sum + (parseFloat(line.amount_paid) || parseFloat(line.amount_htva) || 0), 0);
+  function calculateTotalPaid() { 
+    return lines.reduce((sum, line) => sum + (parseFloat(line.amount_paid) || parseFloat(line.amount_htva) || 0), 0); 
   }
 
-  function calculateArsp() {
-    return calculateTotalPaid() * 0.012;
+  function calculateArsp() { 
+    return calculateTotalPaid() * 0.012; 
   }
 
   async function uploadProof(file, declarationId) {
@@ -454,25 +454,25 @@ export function Declarations() {
       const { error: lineError } = await supabase.from("declaration_lines").insert(lineInserts);
       if (lineError) {
         console.error("Lines insert error:", lineError);
-        alert("Erreur lors de l'enregistrement des lignes : " + lineError.message);
+        alert("Erreur lors de l'enregistrement des lignes: " + lineError.message);
       }
 
       setShowNew(false);
       setEditingDeclarationId(null);
-      setLines([{
-        subcontractor_name: "",
-        activity_type: "",
-        contract_ref: "",
-        amount_htva: "",
+      setLines([{ 
+        subcontractor_name: "", 
+        activity_type: "", 
+        contract_ref: "", 
+        amount_htva: "", 
         contract_id: null,
         document_type: 'manual',
         amount_paid: "",
         manualEntry: true,
       }]);
-      setNewDeclaration({
-        prime_name: primeDetails.name,
-        month: months[new Date().getMonth()],
-        year: new Date().getFullYear()
+      setNewDeclaration({ 
+        prime_name: primeDetails.name, 
+        month: months[new Date().getMonth()], 
+        year: new Date().getFullYear() 
       });
       setProofFile(null);
       fetchDeclarations();
@@ -481,7 +481,7 @@ export function Declarations() {
   }
 
   async function handleDeleteDeclaration(declarationId) {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer cette déclaration ? Cette action est irréversible.")) return;
+    if (!confirm("Etes-vous sur de vouloir supprimer cette declaration ? Cette action est irreversible.")) return;
 
     setSubmitting(true);
     await supabase.from("declaration_lines").delete().eq("declaration_id", declarationId);
@@ -489,7 +489,7 @@ export function Declarations() {
 
     if (error) {
       console.error("Delete error:", error);
-      alert("Erreur lors de la suppression : " + error.message);
+      alert("Erreur lors de la suppression: " + error.message);
     } else {
       fetchDeclarations();
     }
@@ -523,11 +523,11 @@ export function Declarations() {
         manualEntry: !l.contract_id,
       })));
     } else {
-      setLines([{
-        subcontractor_name: "",
-        activity_type: "",
-        contract_ref: "",
-        amount_htva: "",
+      setLines([{ 
+        subcontractor_name: "", 
+        activity_type: "", 
+        contract_ref: "", 
+        amount_htva: "", 
         contract_id: null,
         document_type: 'manual',
         amount_paid: "",
@@ -547,8 +547,8 @@ export function Declarations() {
   const statusConfig = {
     draft: { label: "Brouillon", color: "bg-gray-100 text-gray-600", icon: FileText },
     submitted: { label: "Soumise", color: "bg-blue-100 text-blue-700", icon: Clock },
-    validated: { label: "Validée", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
-    rejected: { label: "Rejetée", color: "bg-red-100 text-red-700", icon: AlertTriangle },
+    validated: { label: "Validee", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
+    rejected: { label: "Rejetee", color: "bg-red-100 text-red-700", icon: AlertTriangle },
   };
 
   const docTypeConfig = {
@@ -576,8 +576,8 @@ export function Declarations() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-[#0a2540]">{auth.userRole === "admin" ? "Déclarations des Entreprises" : "Mes Déclarations Mensuelles"}</h2>
-          <p className="text-sm text-gray-500 mt-1">Déclaration mensuelle de sous-traitance ARSP (1,2% du montant payé)</p>
+          <h2 className="text-2xl font-bold text-[#0a2540]">{auth.userRole === "admin" ? "Declarations des Entreprises" : "Mes Declarations Mensuelles"}</h2>
+          <p className="text-sm text-gray-500 mt-1">Declaration mensuelle de sous-traitance ARSP (1.2% du montant paye)</p>
         </div>
         <div className="flex gap-2">
           {auth.userRole === "admin" && (
@@ -586,7 +586,7 @@ export function Declarations() {
                 <TrendingUp className="w-4 h-4" />Rapports
               </button>
               <button onClick={fetchCumulativeArsp} className="flex items-center gap-2 px-4 py-2 bg-[#1a237e] text-white rounded-lg text-sm font-medium hover:bg-[#0d1b5e]">
-                <BarChart3 className="w-4 h-4" />ARSP cumulé
+                <BarChart3 className="w-4 h-4" />ARSP cumule
               </button>
               <button onClick={exportToExcel} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
                 Exporter Excel
@@ -595,7 +595,7 @@ export function Declarations() {
           )}
           {auth.userRole === "prime" && (
             <button onClick={() => { setEditingDeclarationId(null); setShowNew(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#0a2540] text-white rounded-lg text-sm font-medium hover:bg-[#0d2f4f]">
-              <Plus className="w-4 h-4" />Nouvelle déclaration
+              <Plus className="w-4 h-4" />Nouvelle declaration
             </button>
           )}
         </div>
@@ -607,7 +607,7 @@ export function Declarations() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-[#0a2540] flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-[#1a237e]" />
-              ARSP cumulé par entreprise
+              ARSP cumule par entreprise
             </h3>
             <button onClick={() => setShowCumulative(false)} className="text-gray-400 hover:text-gray-600">
               <X className="w-4 h-4" />
@@ -615,7 +615,7 @@ export function Declarations() {
           </div>
 
           {cumulativeArsp.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">Aucune donnée disponible</p>
+            <p className="text-sm text-gray-500 text-center py-4">Aucune donnee disponible</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -623,8 +623,8 @@ export function Declarations() {
                   <tr>
                     <th className="text-left px-4 py-3 text-xs font-semibold">Entreprise</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold">Email</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold">Déclarations</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold">Validées</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold">Declarations</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold">Validees</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold">ARSP total (USD)</th>
                   </tr>
                 </thead>
@@ -643,7 +643,7 @@ export function Declarations() {
                 </tbody>
                 <tfoot className="bg-[#F6F9FC]">
                   <tr>
-                    <td colSpan={4} className="px-4 py-3 text-xs font-bold text-right text-[#0a2540]">Total général :</td>
+                    <td colSpan={4} className="px-4 py-3 text-xs font-bold text-right text-[#0a2540]">Total general:</td>
                     <td className="px-4 py-3 text-sm text-right font-bold text-amber-600">${cumulativeArsp.reduce((s, p) => s + p.total_arsp, 0).toFixed(2)}</td>
                   </tr>
                 </tfoot>
@@ -669,15 +669,15 @@ export function Declarations() {
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div className="bg-[#0a2540] rounded-xl p-4 text-white text-center">
-                  <p className="text-xs text-gray-300 mb-1">Total déclarations</p>
+                  <p className="text-xs text-gray-300 mb-1">Total declarations</p>
                   <p className="text-3xl font-bold">{reportData.totalDeclarations}</p>
                 </div>
                 <div className="bg-emerald-50 rounded-xl p-4 text-center border border-emerald-100">
-                  <p className="text-xs text-emerald-600 mb-1">ARSP total collecté</p>
+                  <p className="text-xs text-emerald-600 mb-1">ARSP total collecte</p>
                   <p className="text-2xl font-bold text-emerald-700">${reportData.totalArsp.toFixed(2)}</p>
                 </div>
                 <div className="bg-blue-50 rounded-xl p-4 text-center border border-blue-100">
-                  <p className="text-xs text-blue-600 mb-1">Déclarations validées</p>
+                  <p className="text-xs text-blue-600 mb-1">Declarations validees</p>
                   <p className="text-2xl font-bold text-blue-700">{reportData.statusDist.validated}</p>
                 </div>
                 <div className="bg-amber-50 rounded-xl p-4 text-center border border-amber-100">
@@ -690,11 +690,11 @@ export function Declarations() {
               <div className="mb-8">
                 <h4 className="text-sm font-bold text-[#0a2540] mb-4 flex items-center gap-2">
                   <BarChart3 className="w-4 h-4" />
-                  ARSP collecté par mois
+                  ARSP collecte par mois
                 </h4>
                 <div className="bg-[#F6F9FC] rounded-xl p-4">
                   {reportData.monthly.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">Aucune donnée</p>
+                    <p className="text-sm text-gray-500 text-center py-4">Aucune donnee</p>
                   ) : (
                     <div className="space-y-3">
                       {reportData.monthly.map((m, i) => {
@@ -704,7 +704,7 @@ export function Declarations() {
                           <div key={i} className="flex items-center gap-3">
                             <div className="w-24 text-xs font-medium text-gray-600 shrink-0">{m.month} {m.year}</div>
                             <div className="flex-1 h-8 bg-gray-200 rounded-full overflow-hidden relative">
-                              <div
+                              <div 
                                 className="h-full bg-emerald-500 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
                                 style={{ width: `${Math.max(pct, 5)}%` }}
                               >
@@ -724,11 +724,11 @@ export function Declarations() {
               <div className="mb-8">
                 <h4 className="text-sm font-bold text-[#0a2540] mb-4 flex items-center gap-2">
                   <BarChart3 className="w-4 h-4" />
-                  Nombre de déclarations par mois
+                  Nombre de declarations par mois
                 </h4>
                 <div className="bg-[#F6F9FC] rounded-xl p-4">
                   {reportData.monthly.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">Aucune donnée</p>
+                    <p className="text-sm text-gray-500 text-center py-4">Aucune donnee</p>
                   ) : (
                     <div className="space-y-3">
                       {reportData.monthly.map((m, i) => {
@@ -738,7 +738,7 @@ export function Declarations() {
                           <div key={i} className="flex items-center gap-3">
                             <div className="w-24 text-xs font-medium text-gray-600 shrink-0">{m.month} {m.year}</div>
                             <div className="flex-1 h-8 bg-gray-200 rounded-full overflow-hidden relative">
-                              <div
+                              <div 
                                 className="h-full bg-[#007FFF] rounded-full transition-all duration-500 flex items-center justify-end pr-2"
                                 style={{ width: `${Math.max(pct, 5)}%` }}
                               >
@@ -758,15 +758,15 @@ export function Declarations() {
               <div className="mb-8">
                 <h4 className="text-sm font-bold text-[#0a2540] mb-4 flex items-center gap-2">
                   <PieChart className="w-4 h-4" />
-                  Répartition par statut
+                  Repartition par statut
                 </h4>
                 <div className="bg-[#F6F9FC] rounded-xl p-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
                       { key: 'draft', label: 'Brouillons', color: 'bg-gray-400', textColor: 'text-gray-600' },
                       { key: 'submitted', label: 'Soumises', color: 'bg-blue-500', textColor: 'text-blue-600' },
-                      { key: 'validated', label: 'Validées', color: 'bg-emerald-500', textColor: 'text-emerald-600' },
-                      { key: 'rejected', label: 'Rejetées', color: 'bg-red-500', textColor: 'text-red-600' },
+                      { key: 'validated', label: 'Validees', color: 'bg-emerald-500', textColor: 'text-emerald-600' },
+                      { key: 'rejected', label: 'Rejetees', color: 'bg-red-500', textColor: 'text-red-600' },
                     ].map((s) => {
                       const count = reportData.statusDist[s.key];
                       const total = reportData.totalDeclarations || 1;
@@ -788,15 +788,15 @@ export function Declarations() {
               <div>
                 <h4 className="text-sm font-bold text-[#0a2540] mb-4 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4" />
-                  Récapitulatif annuel
+                  Recapitulatif annuel
                 </h4>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-[#0a2540] text-white">
                       <tr>
-                        <th className="text-left px-4 py-3 text-xs font-semibold">Année</th>
-                        <th className="text-center px-4 py-3 text-xs font-semibold">Déclarations</th>
-                        <th className="text-right px-4 py-3 text-xs font-semibold">ARSP collecté (USD)</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold">Annee</th>
+                        <th className="text-center px-4 py-3 text-xs font-semibold">Declarations</th>
+                        <th className="text-right px-4 py-3 text-xs font-semibold">ARSP collecte (USD)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -829,8 +829,8 @@ export function Declarations() {
             {[
               { key: "all", label: "Toutes" },
               { key: "submitted", label: "Soumises" },
-              { key: "validated", label: "Validées" },
-              { key: "rejected", label: "Rejetées" },
+              { key: "validated", label: "Validees" },
+              { key: "rejected", label: "Rejetees" },
               { key: "draft", label: "Brouillons" },
             ].map((f) => (
               <button
@@ -852,8 +852,8 @@ export function Declarations() {
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-red-700">Déclaration en retard !</p>
-            <p className="text-xs text-red-600">Vous n'avez pas soumis votre déclaration pour {currentMonth} {currentYear}. Date limite : le 7 du mois.</p>
+            <p className="text-sm font-semibold text-red-700">Declaration en retard!</p>
+            <p className="text-xs text-red-600">Vous navez pas soumis votre declaration pour {currentMonth} {currentYear}. Date limite: le 7 du mois.</p>
           </div>
           <button onClick={() => setShowNew(true)} className="ml-auto px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600 shrink-0">Soumettre maintenant</button>
         </div>
@@ -864,8 +864,8 @@ export function Declarations() {
       ) : declarations.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl card-shadow">
           <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">Aucune déclaration</p>
-          {auth.userRole === "prime" && <button onClick={() => setShowNew(true)} className="mt-3 text-sm text-[#007FFF] hover:underline">Créer votre première déclaration</button>}
+          <p className="text-gray-500 font-medium">Aucune declaration</p>
+          {auth.userRole === "prime" && <button onClick={() => setShowNew(true)} className="mt-3 text-sm text-[#007FFF] hover:underline">Creer votre premiere declaration</button>}
         </div>
       ) : (
         <div className="space-y-3">
@@ -877,7 +877,7 @@ export function Declarations() {
             return (
               <div key={d.id} className="bg-white rounded-xl p-5 card-shadow hover:card-shadow-hover transition-all cursor-pointer group">
                 <div className="flex items-center justify-between gap-4">
-                  <div
+                  <div 
                     className="flex items-center gap-4 flex-1"
                     onClick={() => { setSelectedDeclaration(d); fetchDeclarationLines(d.id); }}
                   >
@@ -894,14 +894,14 @@ export function Declarations() {
                   <div className="flex items-center gap-2">
                     {isDraft && isPrimeOwner && (
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
+                        <button 
                           onClick={(e) => { e.stopPropagation(); handleEditDeclaration(d); }}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           title="Modifier"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
-                        <button
+                        <button 
                           onClick={(e) => { e.stopPropagation(); handleDeleteDeclaration(d.id); }}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           title="Supprimer"
@@ -925,7 +925,7 @@ export function Declarations() {
           <div className="bg-white rounded-2xl max-w-4xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-[#0a2540]">{editingDeclarationId ? "Modifier la déclaration" : "Nouvelle déclaration mensuelle"}</h3>
+                <h3 className="text-lg font-bold text-[#0a2540]">{editingDeclarationId ? "Modifier la declaration" : "Nouvelle declaration mensuelle"}</h3>
                 <button onClick={() => { setShowNew(false); setEditingDeclarationId(null); }}><X className="w-5 h-5 text-gray-500" /></button>
               </div>
 
@@ -944,7 +944,7 @@ export function Declarations() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">Année</label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Annee</label>
                     <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" value={newDeclaration.year} onChange={(e) => setNewDeclaration({...newDeclaration, year: parseInt(e.target.value)})}>
                       {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
@@ -984,8 +984,8 @@ export function Declarations() {
                         <div className="flex items-center gap-2 mb-2">
                           {!line.manualEntry && primeContracts.length > 0 ? (
                             <div className="flex-1">
-                              <label className="text-xs text-gray-500 mb-1 block">Sélectionner un contrat / BC</label>
-                              <select
+                              <label className="text-xs text-gray-500 mb-1 block">Selectionner un contrat/BC</label>
+                              <select 
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]"
                                 value={line.contract_id || ""}
                                 onChange={(e) => {
@@ -1006,7 +1006,7 @@ export function Declarations() {
                               </select>
                             </div>
                           ) : (
-                            <button
+                            <button 
                               onClick={() => {
                                 const updated = [...lines];
                                 updated[i] = { ...updated[i], manualEntry: false };
@@ -1015,7 +1015,7 @@ export function Declarations() {
                               className="flex items-center gap-1 text-xs text-[#007FFF] hover:underline"
                             >
                               <Link2 className="w-3 h-3" />
-                              Lier à un contrat / BC existant
+                              Lier a un contrat/BC existant
                             </button>
                           )}
                         </div>
@@ -1023,58 +1023,58 @@ export function Declarations() {
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                           <div className="md:col-span-3">
                             <label className="text-xs text-gray-500 mb-1 block">Sous-traitant</label>
-                            <input
-                              className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm"
-                              placeholder="Nom..."
-                              value={line.subcontractor_name}
-                              onChange={(e) => updateLine(i, "subcontractor_name", e.target.value)}
+                            <input 
+                              className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm" 
+                              placeholder="Nom..." 
+                              value={line.subcontractor_name} 
+                              onChange={(e) => updateLine(i, "subcontractor_name", e.target.value)} 
                               readOnly={!line.manualEntry && line.contract_id}
                             />
                           </div>
                           <div className="md:col-span-2">
-                            <label className="text-xs text-gray-500 mb-1 block">Activité</label>
-                            <input
-                              className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm"
-                              placeholder="Activité..."
-                              value={line.activity_type}
-                              onChange={(e) => updateLine(i, "activity_type", e.target.value)}
+                            <label className="text-xs text-gray-500 mb-1 block">Activite</label>
+                            <input 
+                              className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm" 
+                              placeholder="Activite..." 
+                              value={line.activity_type} 
+                              onChange={(e) => updateLine(i, "activity_type", e.target.value)} 
                             />
                           </div>
                           <div className="md:col-span-2">
-                            <label className="text-xs text-gray-500 mb-1 block">Réf. contrat</label>
-                            <input
-                              className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm"
-                              placeholder="REF-001"
-                              value={line.contract_ref}
-                              onChange={(e) => updateLine(i, "contract_ref", e.target.value)}
+                            <label className="text-xs text-gray-500 mb-1 block">Ref contrat</label>
+                            <input 
+                              className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm" 
+                              placeholder="REF-001" 
+                              value={line.contract_ref} 
+                              onChange={(e) => updateLine(i, "contract_ref", e.target.value)} 
                               readOnly={!line.manualEntry && line.contract_id}
                             />
                           </div>
                           <div className="md:col-span-2">
                             <label className="text-xs text-gray-500 mb-1 block">Valeur contrat (USD)</label>
-                            <input
-                              type="number"
-                              className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm bg-gray-50"
-                              placeholder="0.00"
-                              value={line.amount_htva}
+                            <input 
+                              type="number" 
+                              className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm bg-gray-50" 
+                              placeholder="0.00" 
+                              value={line.amount_htva} 
                               readOnly
                             />
                           </div>
                           <div className="md:col-span-3">
-                            <label className="text-xs text-emerald-700 font-medium mb-1 block">Montant payé ce mois (USD)</label>
-                            <input
-                              type="number"
-                              className="w-full px-2 py-1.5 border border-emerald-200 rounded text-sm focus:border-emerald-500 outline-none"
-                              placeholder="0.00"
-                              value={line.amount_paid}
-                              onChange={(e) => updateLine(i, "amount_paid", e.target.value)}
+                            <label className="text-xs text-emerald-700 font-medium mb-1 block">Montant paye ce mois (USD)</label>
+                            <input 
+                              type="number" 
+                              className="w-full px-2 py-1.5 border border-emerald-200 rounded text-sm focus:border-emerald-500 outline-none" 
+                              placeholder="0.00" 
+                              value={line.amount_paid} 
+                              onChange={(e) => updateLine(i, "amount_paid", e.target.value)} 
                             />
                           </div>
                         </div>
 
                         <div className="flex justify-end">
                           <div className="text-xs text-gray-500">
-                            ARSP sur montant payé : <span className="font-semibold text-red-600">${((parseFloat(line.amount_paid) || parseFloat(line.amount_htva) || 0) * 0.012).toFixed(2)}</span>
+                            ARSP sur montant paye: <span className="font-semibold text-red-600">${((parseFloat(line.amount_paid) || parseFloat(line.amount_htva) || 0) * 0.012).toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
@@ -1089,11 +1089,11 @@ export function Declarations() {
                       <p className="text-lg font-bold">${calculateTotalHtva().toFixed(2)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-300 mb-1">Total payé ce mois</p>
+                      <p className="text-xs text-gray-300 mb-1">Total paye ce mois</p>
                       <p className="text-lg font-bold text-emerald-300">${calculateTotalPaid().toFixed(2)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-amber-300 mb-1">ARSP dû (1,2%)</p>
+                      <p className="text-xs text-amber-300 mb-1">ARSP du (1.2%)</p>
                       <p className="text-xl font-bold text-amber-400">${calculateArsp().toFixed(2)}</p>
                     </div>
                   </div>
@@ -1104,13 +1104,13 @@ export function Declarations() {
                   <div className={"border-2 border-dashed rounded-xl p-4 text-center " + (proofFile ? "border-emerald-400 bg-emerald-50" : "border-gray-300 hover:border-[#007FFF]")}>
                     <Upload className="w-5 h-5 text-gray-400 mx-auto mb-1" />
                     <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" id="proof-upload" onChange={(e) => setProofFile(e.target.files ? e.target.files[0] : null)} />
-                    <label htmlFor="proof-upload" className="cursor-pointer text-xs text-[#007FFF] hover:underline">{proofFile ? proofFile.name : "Cliquer pour téléverser la preuve de paiement"}</label>
+                    <label htmlFor="proof-upload" className="cursor-pointer text-xs text-[#007FFF] hover:underline">{proofFile ? proofFile.name : "Cliquer pour uploader la preuve de paiement"}</label>
                   </div>
                 </div>
 
                 <div className="flex gap-3">
-                  <button onClick={() => handleSubmit("draft")} disabled={submitting} className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50">{editingDeclarationId ? "Enregistrer les modifications" : "Enregistrer le brouillon"}</button>
-                  <button onClick={() => handleSubmit("submitted")} disabled={submitting || !primeDetails.name} className="flex-1 py-2.5 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC] disabled:opacity-50">{submitting ? "Envoi..." : "Soumettre la déclaration"}</button>
+                  <button onClick={() => handleSubmit("draft")} disabled={submitting} className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50">{editingDeclarationId ? "Enregistrer modifications" : "Enregistrer brouillon"}</button>
+                  <button onClick={() => handleSubmit("submitted")} disabled={submitting || !primeDetails.name} className="flex-1 py-2.5 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC] disabled:opacity-50">{submitting ? "Envoi..." : "Soumettre la declaration"}</button>
                 </div>
               </div>
             </div>
@@ -1125,19 +1125,19 @@ export function Declarations() {
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-[#0a2540]">Déclaration {selectedDeclaration.month} {selectedDeclaration.year}</h3>
+                  <h3 className="text-xl font-bold text-[#0a2540]">Declaration {selectedDeclaration.month} {selectedDeclaration.year}</h3>
                   <p className="text-sm text-gray-500">{selectedDeclaration.prime_name} — {selectedDeclaration.prime_email}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {auth.userRole === 'prime' && selectedDeclaration.status === 'draft' && (
                     <>
-                      <button
+                      <button 
                         onClick={() => { handleEditDeclaration(selectedDeclaration); setSelectedDeclaration(null); }}
                         className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       >
                         <Pencil className="w-4 h-4" />Modifier
                       </button>
-                      <button
+                      <button 
                         onClick={() => { handleDeleteDeclaration(selectedDeclaration.id); setSelectedDeclaration(null); }}
                         className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       >
@@ -1154,17 +1154,17 @@ export function Declarations() {
                   {statusConfig[selectedDeclaration.status] ? statusConfig[selectedDeclaration.status].label : ""}
                 </span>
                 <span className="text-xs text-gray-400">
-                  Soumise le : {selectedDeclaration.submitted_at ? new Date(selectedDeclaration.submitted_at).toLocaleDateString('fr-FR') : 'Non soumise'}
+                  Soumise le: {selectedDeclaration.submitted_at ? new Date(selectedDeclaration.submitted_at).toLocaleDateString('fr-FR') : 'Non soumise'}
                 </span>
                 <span className="text-xs text-gray-400">
-                  Créée le : {new Date(selectedDeclaration.created_at).toLocaleDateString('fr-FR')}
+                  Creee le: {new Date(selectedDeclaration.created_at).toLocaleDateString('fr-FR')}
                 </span>
               </div>
 
               {auth.userRole === "admin" && declarationLines.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
                   <div className="bg-[#F6F9FC] rounded-xl p-4 text-center">
-                    <p className="text-xs text-gray-500 mb-1">Lignes déclarées</p>
+                    <p className="text-xs text-gray-500 mb-1">Lignes declarees</p>
                     <p className="text-2xl font-bold text-[#0a2540]">{declarationLines.length}</p>
                   </div>
                   <div className="bg-[#F6F9FC] rounded-xl p-4 text-center">
@@ -1172,11 +1172,11 @@ export function Declarations() {
                     <p className="text-2xl font-bold text-[#0a2540]">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_htva), 0).toFixed(2)}</p>
                   </div>
                   <div className="bg-emerald-50 rounded-xl p-4 text-center border border-emerald-100">
-                    <p className="text-xs text-emerald-600 mb-1">Total payé ce mois</p>
+                    <p className="text-xs text-emerald-600 mb-1">Total paye ce mois</p>
                     <p className="text-2xl font-bold text-emerald-700">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_paid || l.amount_htva), 0).toFixed(2)}</p>
                   </div>
                   <div className="bg-amber-50 rounded-xl p-4 text-center border border-amber-100">
-                    <p className="text-xs text-amber-600 mb-1">ARSP dû (1,2%)</p>
+                    <p className="text-xs text-amber-600 mb-1">ARSP du (1.2%)</p>
                     <p className="text-2xl font-bold text-amber-700">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_arsp), 0).toFixed(2)}</p>
                   </div>
                 </div>
@@ -1184,12 +1184,12 @@ export function Declarations() {
 
               {auth.userRole === "admin" && (
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-100 mb-4">
-                  <h4 className="text-sm font-semibold text-[#1a237e] mb-2">Entreprise déclarante</h4>
+                  <h4 className="text-sm font-semibold text-[#1a237e] mb-2">Entreprise declarante</h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-600">
-                    <div><span className="text-gray-400">Nom :</span> {selectedDeclaration.prime_name}</div>
-                    <div><span className="text-gray-400">Email :</span> {selectedDeclaration.prime_email}</div>
-                    <div><span className="text-gray-400">Mois :</span> {selectedDeclaration.month}</div>
-                    <div><span className="text-gray-400">Année :</span> {selectedDeclaration.year}</div>
+                    <div><span className="text-gray-400">Nom:</span> {selectedDeclaration.prime_name}</div>
+                    <div><span className="text-gray-400">Email:</span> {selectedDeclaration.prime_email}</div>
+                    <div><span className="text-gray-400">Mois:</span> {selectedDeclaration.month}</div>
+                    <div><span className="text-gray-400">Annee:</span> {selectedDeclaration.year}</div>
                   </div>
                 </div>
               )}
@@ -1206,10 +1206,10 @@ export function Declarations() {
                       <tr>
                         <th className="text-left px-3 py-2 text-xs font-semibold">Type</th>
                         <th className="text-left px-3 py-2 text-xs font-semibold">Sous-traitant</th>
-                        <th className="text-left px-3 py-2 text-xs font-semibold">Activité</th>
-                        <th className="text-left px-3 py-2 text-xs font-semibold">Réf.</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold">Activite</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold">Ref</th>
                         <th className="text-right px-3 py-2 text-xs font-semibold">Valeur (USD)</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold">Payé (USD)</th>
+                        <th className="text-right px-3 py-2 text-xs font-semibold">Paye (USD)</th>
                         <th className="text-right px-3 py-2 text-xs font-semibold">ARSP (USD)</th>
                         <th className="text-center px-3 py-2 text-xs font-semibold">Action</th>
                       </tr>
@@ -1230,7 +1230,7 @@ export function Declarations() {
                           <td className="px-3 py-2 text-xs text-right font-medium text-red-600">${parseFloat(line.amount_arsp).toFixed(2)}</td>
                           <td className="px-3 py-2 text-center">
                             {line.contract_id && (
-                              <button
+                              <button 
                                 onClick={() => fetchContractDetails(line.contract_id)}
                                 className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-[#1a237e] bg-blue-50 hover:bg-blue-100 rounded transition-colors"
                                 title="Voir le contrat"
@@ -1244,7 +1244,7 @@ export function Declarations() {
                     </tbody>
                     <tfoot className="bg-[#0a2540] text-white">
                       <tr>
-                        <td colSpan={4} className="px-3 py-2 text-xs font-bold text-right">Totaux :</td>
+                        <td colSpan={4} className="px-3 py-2 text-xs font-bold text-right">Totaux:</td>
                         <td className="px-3 py-2 text-xs font-bold text-right">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_htva), 0).toFixed(2)}</td>
                         <td className="px-3 py-2 text-xs font-bold text-right text-emerald-300">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_paid || l.amount_htva), 0).toFixed(2)}</td>
                         <td className="px-3 py-2 text-xs font-bold text-right text-amber-400">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_arsp), 0).toFixed(2)}</td>
@@ -1256,8 +1256,8 @@ export function Declarations() {
               ) : (
                 <div className="text-center py-8 bg-gray-50 rounded-xl">
                   <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">Aucune ligne de déclaration</p>
-                  <p className="text-xs text-gray-400 mt-1">Cette déclaration ne contient aucun paiement déclaré.</p>
+                  <p className="text-sm text-gray-400">Aucune ligne de declaration</p>
+                  <p className="text-xs text-gray-400 mt-1">Cette declaration ne contient aucun paiement declare.</p>
                 </div>
               )}
 
@@ -1267,7 +1267,7 @@ export function Declarations() {
                 </a>
               ) : auth.userRole === "prime" && selectedDeclaration.status !== "validated" ? (
                 <div className="mt-4">
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Ajouter une preuve de paiement</label>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Ajouter preuve de paiement</label>
                   <div className="border-2 border-dashed rounded-xl p-4 text-center border-gray-300 hover:border-[#007FFF]">
                     <Upload className="w-5 h-5 text-gray-400 mx-auto mb-1" />
                     <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" id="proof-upload-detail"
@@ -1276,14 +1276,14 @@ export function Declarations() {
                         if (file) await uploadProof(file, selectedDeclaration.id);
                       }}
                     />
-                    <label htmlFor="proof-upload-detail" className="cursor-pointer text-xs text-[#007FFF] hover:underline">Cliquer pour téléverser la preuve</label>
+                    <label htmlFor="proof-upload-detail" className="cursor-pointer text-xs text-[#007FFF] hover:underline">Cliquer pour uploader la preuve</label>
                   </div>
                 </div>
               ) : null}
 
               {selectedDeclaration.rejection_reason && (
                 <div className="bg-red-50 rounded-lg p-4 border border-red-200 mt-4">
-                  <p className="text-sm font-semibold text-red-700 mb-1">Motif du rejet :</p>
+                  <p className="text-sm font-semibold text-red-700 mb-1">Motif du rejet:</p>
                   <p className="text-sm text-red-600">{selectedDeclaration.rejection_reason}</p>
                 </div>
               )}
@@ -1294,10 +1294,10 @@ export function Declarations() {
                     <p className="text-sm font-medium text-amber-800 mb-3">Action administrative</p>
                     <div className="flex gap-3">
                       <button onClick={() => handleAdminAction(selectedDeclaration.id, "validated", undefined)} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2">
-                        <CheckCircle2 className="w-4 h-4" />Valider la déclaration
+                        <CheckCircle2 className="w-4 h-4" />Valider la declaration
                       </button>
-                      <button onClick={() => { const reason = prompt("Motif du rejet :"); if (reason) handleAdminAction(selectedDeclaration.id, "rejected", reason); }} className="flex-1 py-2.5 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 flex items-center justify-center gap-2">
-                        <AlertTriangle className="w-4 h-4" />Rejeter la déclaration
+                      <button onClick={() => { const reason = prompt("Motif du rejet:"); if (reason) handleAdminAction(selectedDeclaration.id, "rejected", reason); }} className="flex-1 py-2.5 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 flex items-center justify-center gap-2">
+                        <AlertTriangle className="w-4 h-4" />Rejeter la declaration
                       </button>
                     </div>
                   </div>
@@ -1309,7 +1309,7 @@ export function Declarations() {
                   <div className="flex items-center gap-2">
                     {selectedDeclaration.status === 'validated' ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <AlertTriangle className="w-5 h-5 text-red-600" />}
                     <span className="text-sm font-medium">
-                      {selectedDeclaration.status === 'validated' ? 'Cette déclaration a été validée' : 'Cette déclaration a été rejetée'}
+                      {selectedDeclaration.status === 'validated' ? 'Cette declaration a ete validee' : 'Cette declaration a ete rejetee'}
                     </span>
                   </div>
                 </div>
@@ -1325,14 +1325,14 @@ export function Declarations() {
           <div className="bg-white rounded-2xl max-w-2xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-[#0a2540]">Détails du contrat</h3>
+                <h3 className="text-lg font-bold text-[#0a2540]">Details du contrat</h3>
                 <button onClick={() => setShowContractModal(false)}><X className="w-5 h-5 text-gray-500" /></button>
               </div>
 
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 mb-1">Référence</p>
+                    <p className="text-xs text-gray-500 mb-1">Reference</p>
                     <p className="text-sm font-semibold text-[#0a2540]">{contractDetails.reference}</p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
@@ -1353,7 +1353,7 @@ export function Declarations() {
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
                     <p className="text-xs text-gray-500 mb-1">Statut</p>
-                    <p className="text-sm font-semibold text-[#0a2540]">{contractDetails.status === 'active' ? 'Actif' : contractDetails.status === 'completed' ? 'Terminé' : contractDetails.status}</p>
+                    <p className="text-sm font-semibold text-[#0a2540]">{contractDetails.status === 'active' ? 'Actif' : contractDetails.status === 'completed' ? 'Termine' : contractDetails.status}</p>
                   </div>
                 </div>
 
@@ -1365,10 +1365,10 @@ export function Declarations() {
                 )}
 
                 {contractDetails.file_url && (
-                 
-                    href={contractDetails.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <a 
+                    href={contractDetails.file_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
                     className="flex items-center gap-2 px-4 py-2 bg-[#0a2540] text-white rounded-lg text-sm hover:bg-[#0d2f4f] w-fit"
                   >
                     <FileText className="w-4 h-4" />Voir le document du contrat
