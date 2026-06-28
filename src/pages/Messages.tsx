@@ -14,6 +14,7 @@ export function Messages() {
   const [users, setUsers] = useState<any[]>([]);
   const [userQuery, setUserQuery] = useState('');
   const [newConvEmail, setNewConvEmail] = useState('');
+  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const subscriptionRef = useRef<any>(null);
 
@@ -43,70 +44,101 @@ export function Messages() {
   }, [messages]);
 
   async function fetchUsers() {
-    const { data } = await supabase
-      .from('user_profiles')
-      .select('id, email, full_name, role')
-      .neq('email', currentUserEmail)
-      .order('full_name', { ascending: true });
-    if (data) setUsers(data);
+    try {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('id, email, full_name, role')
+        .neq('email', currentUserEmail)
+        .order('full_name', { ascending: true });
+      if (data) setUsers(data);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    }
   }
 
   async function fetchConversations() {
-    const { data, error } = await supabase
-      .from('conversations')
-      .select('*')
-      .or(`participant_one.eq.${currentUserEmail},participant_two.eq.${currentUserEmail}`)
-      .order('updated_at', { ascending: false });
+    if (!currentUserEmail) return;
 
-    if (error) {
-      console.error('Error fetching conversations:', error);
-      return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('*')
+        .or(`participant_one.eq.${currentUserEmail},participant_two.eq.${currentUserEmail}`)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching conversations:', error);
+        setLoading(false);
+        return;
+      }
+
+      if (data) {
+        const conversationsWithPreview = await Promise.all(
+          data.map(async (conv) => {
+            try {
+              const { data: lastMsg } = await supabase
+                .from('messages')
+                .select('content, created_at, sender_email')
+                .eq('conversation_id', conv.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              let unreadCount = 0;
+              try {
+                const { count } = await supabase
+                  .from('messages')
+                  .select('*', { count: 'exact', head: true })
+                  .eq('conversation_id', conv.id)
+                  .eq('read', false)
+                  .neq('sender_email', currentUserEmail);
+                unreadCount = count || 0;
+              } catch {
+                // read column might not exist yet
+              }
+
+              return {
+                ...conv,
+                lastMessage: lastMsg,
+                unreadCount: unreadCount,
+                otherParticipant: conv.participant_one === currentUserEmail ? conv.participant_two : conv.participant_one,
+              };
+            } catch (err) {
+              return {
+                ...conv,
+                lastMessage: null,
+                unreadCount: 0,
+                otherParticipant: conv.participant_one === currentUserEmail ? conv.participant_two : conv.participant_one,
+              };
+            }
+          })
+        );
+        setConversations(conversationsWithPreview);
+      }
+    } catch (err) {
+      console.error('Error in fetchConversations:', err);
     }
-
-    if (data) {
-      // Fetch last message for each conversation
-      const conversationsWithPreview = await Promise.all(
-        data.map(async (conv) => {
-          const { data: lastMsg } = await supabase
-            .from('messages')
-            .select('content, created_at, sender_email')
-            .eq('conversation_id', conv.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          const { count: unreadCount } = await supabase
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('conversation_id', conv.id)
-            .eq('read', false)
-            .neq('sender_email', currentUserEmail);
-
-          return {
-            ...conv,
-            lastMessage: lastMsg,
-            unreadCount: unreadCount || 0,
-            otherParticipant: conv.participant_one === currentUserEmail ? conv.participant_two : conv.participant_one,
-          };
-        })
-      );
-      setConversations(conversationsWithPreview);
-    }
+    setLoading(false);
   }
 
   async function fetchMessages(convId: string) {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', convId)
-      .order('created_at', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', convId)
+        .order('created_at', { ascending: true });
 
-    if (error) {
-      console.error('Error fetching messages:', error);
-      return;
+      if (error) {
+        console.error('Error fetching messages:', error);
+        return;
+      }
+
+      if (data) setMessages(data);
+    } catch (err) {
+      console.error('Error in fetchMessages:', err);
     }
-
-    if (data) setMessages(data);
   }
 
   function subscribeToMessages(convId: string) {
@@ -123,88 +155,116 @@ export function Messages() {
         filter: `conversation_id=eq.${convId}`,
       }, (payload) => {
         setMessages(prev => [...prev, payload.new]);
-        // Mark as read if we're viewing this conversation
         if (payload.new.sender_email !== currentUserEmail) {
           markAsRead(payload.new.id);
         }
+        fetchConversations();
       })
       .subscribe();
   }
 
   async function markAsRead(messageId: string) {
-    await supabase.from('messages').update({ read: true }).eq('id', messageId);
+    try {
+      await supabase.from('messages').update({ read: true }).eq('id', messageId);
+    } catch (err) {
+      // read column might not exist yet
+    }
   }
 
   async function markConversationAsRead(convId: string) {
-    await supabase
-      .from('messages')
-      .update({ read: true })
-      .eq('conversation_id', convId)
-      .eq('read', false)
-      .neq('sender_email', currentUserEmail);
+    try {
+      await supabase
+        .from('messages')
+        .update({ read: true })
+        .eq('conversation_id', convId)
+        .eq('read', false)
+        .neq('sender_email', currentUserEmail);
 
-    // Refresh conversations to update unread counts
-    fetchConversations();
+      fetchConversations();
+    } catch (err) {
+      // read column might not exist yet
+    }
   }
 
   async function handleSend() {
     if (!newMessage.trim() || !selectedConv) return;
 
-    const { error } = await supabase.from('messages').insert([{
-      conversation_id: selectedConv,
-      sender_email: currentUserEmail,
-      sender_name: currentUserName,
-      content: newMessage.trim(),
-      read: false,
-    }]);
+    try {
+      const { error } = await supabase.from('messages').insert([{
+        conversation_id: selectedConv,
+        sender_email: currentUserEmail,
+        sender_name: currentUserName,
+        content: newMessage.trim(),
+        read: false,
+      }]);
 
-    if (error) {
-      console.error('Error sending message:', error);
-      alert('Erreur lors de l\'envoi du message');
-      return;
+      if (error) {
+        console.error('Error sending message:', error);
+        alert("Erreur lors de l'envoi du message");
+        return;
+      }
+
+      setNewMessage('');
+      fetchMessages(selectedConv);
+      fetchConversations();
+    } catch (err) {
+      console.error('Error in handleSend:', err);
+      alert("Erreur lors de l'envoi du message");
     }
-
-    // Update conversation updated_at
-    await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', selectedConv);
-
-    setNewMessage('');
-    fetchMessages(selectedConv);
-    fetchConversations();
   }
 
   async function handleNewConversation() {
-    if (!newConvEmail) return;
-
-    // Check if conversation already exists
-    const { data: existing } = await supabase
-      .from('conversations')
-      .select('id')
-      .or(`and(participant_one.eq.${currentUserEmail},participant_two.eq.${newConvEmail}),and(participant_one.eq.${newConvEmail},participant_two.eq.${currentUserEmail})`)
-      .maybeSingle();
-
-    if (existing) {
-      setSelectedConv(existing.id);
-      setShowNew(false);
-      setNewConvEmail('');
+    if (!newConvEmail || !currentUserEmail) {
+      alert("Veuillez sélectionner un destinataire");
       return;
     }
 
-    const { data, error } = await supabase.from('conversations').insert([{
-      participant_one: currentUserEmail,
-      participant_two: newConvEmail,
-    }]).select();
-
-    if (error) {
-      console.error('Error creating conversation:', error);
-      alert('Erreur lors de la création de la conversation');
+    if (newConvEmail === currentUserEmail) {
+      alert("Vous ne pouvez pas démarrer une conversation avec vous-même");
       return;
     }
 
-    if (data && data[0]) {
-      setSelectedConv(data[0].id);
-      setShowNew(false);
-      setNewConvEmail('');
-      fetchConversations();
+    try {
+      // Check if conversation already exists
+      const { data: existing, error: existingError } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(`and(participant_one.eq.${currentUserEmail},participant_two.eq.${newConvEmail}),and(participant_one.eq.${newConvEmail},participant_two.eq.${currentUserEmail})`)
+        .maybeSingle();
+
+      if (existingError) {
+        console.error('Error checking existing conversation:', existingError);
+      }
+
+      if (existing) {
+        setSelectedConv(existing.id);
+        setShowNew(false);
+        setNewConvEmail('');
+        setUserQuery('');
+        return;
+      }
+
+      const { data, error } = await supabase.from('conversations').insert([{
+        participant_one: currentUserEmail,
+        participant_two: newConvEmail,
+      }]).select();
+
+      if (error) {
+        console.error('Error creating conversation:', error);
+        alert("Erreur lors de la création de la conversation: " + error.message);
+        return;
+      }
+
+      if (data && data[0]) {
+        setSelectedConv(data[0].id);
+        setShowNew(false);
+        setNewConvEmail('');
+        setUserQuery('');
+        fetchConversations();
+      }
+    } catch (err) {
+      console.error('Error in handleNewConversation:', err);
+      alert("Erreur lors de la création de la conversation");
     }
   }
 
@@ -247,7 +307,9 @@ export function Messages() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {filteredConversations.length === 0 ? (
+          {loading ? (
+            <div className="p-4 text-center text-gray-400 text-sm">Chargement...</div>
+          ) : filteredConversations.length === 0 ? (
             <div className="p-4 text-center text-gray-400 text-sm">
               Aucune conversation.<br />
               <button onClick={() => setShowNew(true)} className="text-[#007FFF] mt-1 hover:underline">Démarrer une conversation</button>
