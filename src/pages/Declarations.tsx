@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
-import { Plus, X, FileText, CheckCircle2, Clock, AlertTriangle, Trash2, Upload, Link2, Eye, Pencil, Trash } from "lucide-react";
+import { Plus, X, FileText, CheckCircle2, Clock, AlertTriangle, Trash2, Upload, Link2, Eye, Pencil, Trash, BarChart3, TrendingUp, PieChart } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/App";
 
@@ -51,6 +51,10 @@ export function Declarations() {
   const [primeContracts, setPrimeContracts] = useState<ContractOption[]>([]);
   const [contractDetails, setContractDetails] = useState(null);
   const [showContractModal, setShowContractModal] = useState(false);
+  const [cumulativeArsp, setCumulativeArsp] = useState([]);
+  const [showCumulative, setShowCumulative] = useState(false);
+  const [showReports, setShowReports] = useState(false);
+  const [reportData, setReportData] = useState(null);
 
   useEffect(() => { 
     fetchDeclarations(); 
@@ -137,6 +141,128 @@ export function Declarations() {
       setContractDetails(data);
       setShowContractModal(true);
     }
+  }
+
+  async function fetchCumulativeArsp() {
+    const { data, error } = await supabase
+      .from("declarations")
+      .select('id, prime_name, prime_email, status');
+
+    if (error || !data) {
+      console.error('Error fetching declarations for cumulative:', error);
+      return;
+    }
+
+    const declarationIds = data.map(d => d.id);
+
+    const { data: linesData, error: linesError } = await supabase
+      .from("declaration_lines")
+      .select('declaration_id, amount_arsp')
+      .in('declaration_id', declarationIds);
+
+    if (linesError || !linesData) {
+      console.error('Error fetching lines for cumulative:', linesError);
+      return;
+    }
+
+    const primeMap = {};
+    data.forEach(d => {
+      if (!primeMap[d.prime_email]) {
+        primeMap[d.prime_email] = {
+          prime_name: d.prime_name,
+          prime_email: d.prime_email,
+          total_arsp: 0,
+          declaration_count: 0,
+          validated_count: 0,
+        };
+      }
+      primeMap[d.prime_email].declaration_count += 1;
+      if (d.status === 'validated') {
+        primeMap[d.prime_email].validated_count += 1;
+      }
+    });
+
+    linesData.forEach(line => {
+      const decl = data.find(d => d.id === line.declaration_id);
+      if (decl && primeMap[decl.prime_email]) {
+        primeMap[decl.prime_email].total_arsp += parseFloat(line.amount_arsp) || 0;
+      }
+    });
+
+    const result = Object.values(primeMap).sort((a, b) => b.total_arsp - a.total_arsp);
+    setCumulativeArsp(result);
+    setShowCumulative(true);
+  }
+
+  async function fetchReportData() {
+    const { data: allDecl, error: declError } = await supabase
+      .from("declarations")
+      .select("id, month, year, status, created_at");
+
+    if (declError || !allDecl) {
+      console.error('Error fetching report declarations:', declError);
+      return;
+    }
+
+    const declarationIds = allDecl.map(d => d.id);
+
+    const { data: allLines, error: linesError } = await supabase
+      .from("declaration_lines")
+      .select("declaration_id, amount_arsp, amount_htva, amount_paid");
+
+    if (linesError || !allLines) {
+      console.error('Error fetching report lines:', linesError);
+      return;
+    }
+
+    const monthlyMap = {};
+    allDecl.forEach(d => {
+      const key = `${d.month} ${d.year}`;
+      if (!monthlyMap[key]) {
+        monthlyMap[key] = { month: d.month, year: d.year, count: 0, arsp: 0, htva: 0, paid: 0 };
+      }
+      monthlyMap[key].count += 1;
+    });
+
+    allLines.forEach(line => {
+      const decl = allDecl.find(d => d.id === line.declaration_id);
+      if (decl) {
+        const key = `${decl.month} ${decl.year}`;
+        if (monthlyMap[key]) {
+          monthlyMap[key].arsp += parseFloat(line.amount_arsp) || 0;
+          monthlyMap[key].htva += parseFloat(line.amount_htva) || 0;
+          monthlyMap[key].paid += parseFloat(line.amount_paid || line.amount_htva) || 0;
+        }
+      }
+    });
+
+    const monthly = Object.values(monthlyMap).sort((a, b) => {
+      const monthIdxA = months.indexOf(a.month);
+      const monthIdxB = months.indexOf(b.month);
+      if (a.year !== b.year) return a.year - b.year;
+      return monthIdxA - monthIdxB;
+    });
+
+    const statusDist = { draft: 0, submitted: 0, validated: 0, rejected: 0 };
+    allDecl.forEach(d => {
+      if (statusDist[d.status] !== undefined) statusDist[d.status] += 1;
+    });
+
+    const yearlyMap = {};
+    allDecl.forEach(d => {
+      if (!yearlyMap[d.year]) yearlyMap[d.year] = { year: d.year, count: 0, arsp: 0 };
+      yearlyMap[d.year].count += 1;
+    });
+    allLines.forEach(line => {
+      const decl = allDecl.find(d => d.id === line.declaration_id);
+      if (decl && yearlyMap[decl.year]) {
+        yearlyMap[decl.year].arsp += parseFloat(line.amount_arsp) || 0;
+      }
+    });
+    const yearly = Object.values(yearlyMap).sort((a, b) => a.year - b.year);
+
+    setReportData({ monthly, statusDist, yearly, totalDeclarations: allDecl.length, totalArsp: allLines.reduce((s, l) => s + parseFloat(l.amount_arsp), 0) });
+    setShowReports(true);
   }
 
   async function exportToExcel() {
@@ -281,7 +407,6 @@ export function Declarations() {
     let decData, error;
 
     if (editingDeclarationId) {
-      // Update existing declaration
       const { data, error: updateError } = await supabase.from("declarations").update({
         prime_email: auth.userEmail,
         prime_name: newDeclaration.prime_name || primeDetails.name,
@@ -295,7 +420,6 @@ export function Declarations() {
       decData = data;
       error = updateError;
     } else {
-      // Insert new declaration
       const { data, error: insertError } = await supabase.from("declarations").insert([{
         prime_email: auth.userEmail,
         prime_name: newDeclaration.prime_name || primeDetails.name,
@@ -324,7 +448,6 @@ export function Declarations() {
       }));
 
       if (editingDeclarationId) {
-        // Delete old lines and insert new ones
         await supabase.from("declaration_lines").delete().eq("declaration_id", decId);
       }
 
@@ -334,7 +457,6 @@ export function Declarations() {
         alert("Erreur lors de l'enregistrement des lignes: " + lineError.message);
       }
 
-      // Reset form
       setShowNew(false);
       setEditingDeclarationId(null);
       setLines([{ 
@@ -362,11 +484,7 @@ export function Declarations() {
     if (!confirm("Etes-vous sur de vouloir supprimer cette declaration ? Cette action est irreversible.")) return;
 
     setSubmitting(true);
-
-    // Delete lines first (foreign key constraint)
     await supabase.from("declaration_lines").delete().eq("declaration_id", declarationId);
-
-    // Delete declaration
     const { error } = await supabase.from("declarations").delete().eq("id", declarationId);
 
     if (error) {
@@ -387,7 +505,6 @@ export function Declarations() {
       year: declaration.year,
     });
 
-    // Fetch existing lines
     const { data: existingLines } = await supabase
       .from("declaration_lines")
       .select("*")
@@ -453,6 +570,8 @@ export function Declarations() {
     return matchesStatus && matchesSearch;
   });
 
+  const getMax = (arr, key) => Math.max(...arr.map(d => d[key] || 0), 1);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -462,9 +581,17 @@ export function Declarations() {
         </div>
         <div className="flex gap-2">
           {auth.userRole === "admin" && (
-            <button onClick={exportToExcel} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
-              Exporter Excel
-            </button>
+            <>
+              <button onClick={fetchReportData} className="flex items-center gap-2 px-4 py-2 bg-[#007FFF] text-white rounded-lg text-sm font-medium hover:bg-[#0066CC]">
+                <TrendingUp className="w-4 h-4" />Rapports
+              </button>
+              <button onClick={fetchCumulativeArsp} className="flex items-center gap-2 px-4 py-2 bg-[#1a237e] text-white rounded-lg text-sm font-medium hover:bg-[#0d1b5e]">
+                <BarChart3 className="w-4 h-4" />ARSP cumule
+              </button>
+              <button onClick={exportToExcel} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
+                Exporter Excel
+              </button>
+            </>
           )}
           {auth.userRole === "prime" && (
             <button onClick={() => { setEditingDeclarationId(null); setShowNew(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#0a2540] text-white rounded-lg text-sm font-medium hover:bg-[#0d2f4f]">
@@ -473,6 +600,221 @@ export function Declarations() {
           )}
         </div>
       </div>
+
+      {/* CUMULATIVE ARSP SECTION */}
+      {auth.userRole === "admin" && showCumulative && (
+        <div className="bg-white rounded-xl p-5 card-shadow mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-[#0a2540] flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-[#1a237e]" />
+              ARSP cumule par entreprise
+            </h3>
+            <button onClick={() => setShowCumulative(false)} className="text-gray-400 hover:text-gray-600">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {cumulativeArsp.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">Aucune donnee disponible</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-[#0a2540] text-white">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-xs font-semibold">Entreprise</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold">Email</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold">Declarations</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold">Validees</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold">ARSP total (USD)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {cumulativeArsp.map((prime, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm font-medium text-[#0a2540]">{prime.prime_name}</td>
+                      <td className="px-4 py-3 text-xs text-gray-500">{prime.prime_email}</td>
+                      <td className="px-4 py-3 text-xs text-center font-medium">{prime.declaration_count}</td>
+                      <td className="px-4 py-3 text-xs text-center">
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">{prime.validated_count}</span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-bold text-amber-600">${prime.total_arsp.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-[#F6F9FC]">
+                  <tr>
+                    <td colSpan={4} className="px-4 py-3 text-xs font-bold text-right text-[#0a2540]">Total general:</td>
+                    <td className="px-4 py-3 text-sm text-right font-bold text-amber-600">${cumulativeArsp.reduce((s, p) => s + p.total_arsp, 0).toFixed(2)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* REPORTS MODAL */}
+      {showReports && reportData && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => setShowReports(false)}>
+          <div className="bg-white rounded-2xl max-w-5xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-[#0a2540] flex items-center gap-2">
+                  <TrendingUp className="w-6 h-6 text-[#007FFF]" />
+                  Tableau de bord ARSP
+                </h3>
+                <button onClick={() => setShowReports(false)}><X className="w-5 h-5 text-gray-500" /></button>
+              </div>
+
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div className="bg-[#0a2540] rounded-xl p-4 text-white text-center">
+                  <p className="text-xs text-gray-300 mb-1">Total declarations</p>
+                  <p className="text-3xl font-bold">{reportData.totalDeclarations}</p>
+                </div>
+                <div className="bg-emerald-50 rounded-xl p-4 text-center border border-emerald-100">
+                  <p className="text-xs text-emerald-600 mb-1">ARSP total collecte</p>
+                  <p className="text-2xl font-bold text-emerald-700">${reportData.totalArsp.toFixed(2)}</p>
+                </div>
+                <div className="bg-blue-50 rounded-xl p-4 text-center border border-blue-100">
+                  <p className="text-xs text-blue-600 mb-1">Declarations validees</p>
+                  <p className="text-2xl font-bold text-blue-700">{reportData.statusDist.validated}</p>
+                </div>
+                <div className="bg-amber-50 rounded-xl p-4 text-center border border-amber-100">
+                  <p className="text-xs text-amber-600 mb-1">En attente</p>
+                  <p className="text-2xl font-bold text-amber-700">{reportData.statusDist.submitted}</p>
+                </div>
+              </div>
+
+              {/* Monthly ARSP Bar Chart */}
+              <div className="mb-8">
+                <h4 className="text-sm font-bold text-[#0a2540] mb-4 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4" />
+                  ARSP collecte par mois
+                </h4>
+                <div className="bg-[#F6F9FC] rounded-xl p-4">
+                  {reportData.monthly.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">Aucune donnee</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {reportData.monthly.map((m, i) => {
+                        const maxArsp = getMax(reportData.monthly, 'arsp');
+                        const pct = (m.arsp / maxArsp) * 100;
+                        return (
+                          <div key={i} className="flex items-center gap-3">
+                            <div className="w-24 text-xs font-medium text-gray-600 shrink-0">{m.month} {m.year}</div>
+                            <div className="flex-1 h-8 bg-gray-200 rounded-full overflow-hidden relative">
+                              <div 
+                                className="h-full bg-emerald-500 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                                style={{ width: `${Math.max(pct, 5)}%` }}
+                              >
+                                {pct > 20 && <span className="text-[10px] text-white font-bold">${m.arsp.toFixed(0)}</span>}
+                              </div>
+                            </div>
+                            {pct <= 20 && <span className="text-xs text-gray-500 w-16 text-right">${m.arsp.toFixed(0)}</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Monthly Declarations Count Chart */}
+              <div className="mb-8">
+                <h4 className="text-sm font-bold text-[#0a2540] mb-4 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4" />
+                  Nombre de declarations par mois
+                </h4>
+                <div className="bg-[#F6F9FC] rounded-xl p-4">
+                  {reportData.monthly.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">Aucune donnee</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {reportData.monthly.map((m, i) => {
+                        const maxCount = getMax(reportData.monthly, 'count');
+                        const pct = (m.count / maxCount) * 100;
+                        return (
+                          <div key={i} className="flex items-center gap-3">
+                            <div className="w-24 text-xs font-medium text-gray-600 shrink-0">{m.month} {m.year}</div>
+                            <div className="flex-1 h-8 bg-gray-200 rounded-full overflow-hidden relative">
+                              <div 
+                                className="h-full bg-[#007FFF] rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                                style={{ width: `${Math.max(pct, 5)}%` }}
+                              >
+                                {pct > 20 && <span className="text-[10px] text-white font-bold">{m.count}</span>}
+                              </div>
+                            </div>
+                            {pct <= 20 && <span className="text-xs text-gray-500 w-16 text-right">{m.count}</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Status Distribution */}
+              <div className="mb-8">
+                <h4 className="text-sm font-bold text-[#0a2540] mb-4 flex items-center gap-2">
+                  <PieChart className="w-4 h-4" />
+                  Repartition par statut
+                </h4>
+                <div className="bg-[#F6F9FC] rounded-xl p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { key: 'draft', label: 'Brouillons', color: 'bg-gray-400', textColor: 'text-gray-600' },
+                      { key: 'submitted', label: 'Soumises', color: 'bg-blue-500', textColor: 'text-blue-600' },
+                      { key: 'validated', label: 'Validees', color: 'bg-emerald-500', textColor: 'text-emerald-600' },
+                      { key: 'rejected', label: 'Rejetees', color: 'bg-red-500', textColor: 'text-red-600' },
+                    ].map((s) => {
+                      const count = reportData.statusDist[s.key];
+                      const total = reportData.totalDeclarations || 1;
+                      const pct = ((count / total) * 100).toFixed(1);
+                      return (
+                        <div key={s.key} className="bg-white rounded-lg p-3 text-center">
+                          <div className={`w-3 h-3 rounded-full ${s.color} mx-auto mb-2`}></div>
+                          <p className="text-2xl font-bold text-[#0a2540]">{count}</p>
+                          <p className="text-xs text-gray-500">{s.label}</p>
+                          <p className={`text-xs font-medium ${s.textColor}`}>{pct}%</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Yearly Summary Table */}
+              <div>
+                <h4 className="text-sm font-bold text-[#0a2540] mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  Recapitulatif annuel
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-[#0a2540] text-white">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-xs font-semibold">Annee</th>
+                        <th className="text-center px-4 py-3 text-xs font-semibold">Declarations</th>
+                        <th className="text-right px-4 py-3 text-xs font-semibold">ARSP collecte (USD)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {reportData.yearly.map((y, i) => (
+                        <tr key={i} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm font-medium text-[#0a2540]">{y.year}</td>
+                          <td className="px-4 py-3 text-xs text-center">{y.count}</td>
+                          <td className="px-4 py-3 text-sm text-right font-bold text-emerald-600">${y.arsp.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {auth.userRole === "admin" && (
         <div className="bg-white rounded-xl p-4 card-shadow mb-4 space-y-3">
@@ -588,7 +930,6 @@ export function Declarations() {
               </div>
 
               <div className="space-y-4">
-                {/* Prime company - auto-filled */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="md:col-span-1">
                     <label className="text-sm font-medium text-gray-700 mb-1 block">Entreprise principale</label>
@@ -610,7 +951,6 @@ export function Declarations() {
                   </div>
                 </div>
 
-                {/* Subcontractor lines */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-sm font-medium text-gray-700">Paiements aux sous-traitants</label>
@@ -620,7 +960,6 @@ export function Declarations() {
                   <div className="space-y-3">
                     {lines.map((line, i) => (
                       <div key={i} className="bg-[#F6F9FC] rounded-xl p-4 space-y-3">
-                        {/* Line header with document type badge */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-semibold text-gray-500">Ligne {i + 1}</span>
@@ -642,7 +981,6 @@ export function Declarations() {
                           )}
                         </div>
 
-                        {/* Contract selector OR manual entry toggle */}
                         <div className="flex items-center gap-2 mb-2">
                           {!line.manualEntry && primeContracts.length > 0 ? (
                             <div className="flex-1">
@@ -682,7 +1020,6 @@ export function Declarations() {
                           )}
                         </div>
 
-                        {/* Fields */}
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                           <div className="md:col-span-3">
                             <label className="text-xs text-gray-500 mb-1 block">Sous-traitant</label>
@@ -735,7 +1072,6 @@ export function Declarations() {
                           </div>
                         </div>
 
-                        {/* ARSP for this line */}
                         <div className="flex justify-end">
                           <div className="text-xs text-gray-500">
                             ARSP sur montant paye: <span className="font-semibold text-red-600">${((parseFloat(line.amount_paid) || parseFloat(line.amount_htva) || 0) * 0.012).toFixed(2)}</span>
@@ -746,7 +1082,6 @@ export function Declarations() {
                   </div>
                 </div>
 
-                {/* Totals */}
                 <div className="bg-[#0a2540] rounded-xl p-4 text-white">
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
@@ -764,7 +1099,6 @@ export function Declarations() {
                   </div>
                 </div>
 
-                {/* Proof upload */}
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">Preuve de paiement ARSP</label>
                   <div className={"border-2 border-dashed rounded-xl p-4 text-center " + (proofFile ? "border-emerald-400 bg-emerald-50" : "border-gray-300 hover:border-[#007FFF]")}>
@@ -774,7 +1108,6 @@ export function Declarations() {
                   </div>
                 </div>
 
-                {/* Submit buttons */}
                 <div className="flex gap-3">
                   <button onClick={() => handleSubmit("draft")} disabled={submitting} className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50">{editingDeclarationId ? "Enregistrer modifications" : "Enregistrer brouillon"}</button>
                   <button onClick={() => handleSubmit("submitted")} disabled={submitting || !primeDetails.name} className="flex-1 py-2.5 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC] disabled:opacity-50">{submitting ? "Envoi..." : "Soumettre la declaration"}</button>
@@ -816,7 +1149,6 @@ export function Declarations() {
                 </div>
               </div>
 
-              {/* Status & Meta */}
               <div className="flex flex-wrap items-center gap-3 mb-4">
                 <span className={"px-2 py-0.5 rounded-full text-xs font-bold uppercase " + (statusConfig[selectedDeclaration.status] ? statusConfig[selectedDeclaration.status].color : "")}>
                   {statusConfig[selectedDeclaration.status] ? statusConfig[selectedDeclaration.status].label : ""}
@@ -829,7 +1161,6 @@ export function Declarations() {
                 </span>
               </div>
 
-              {/* Admin Summary Cards */}
               {auth.userRole === "admin" && declarationLines.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
                   <div className="bg-[#F6F9FC] rounded-xl p-4 text-center">
@@ -851,7 +1182,6 @@ export function Declarations() {
                 </div>
               )}
 
-              {/* Prime company details for admin */}
               {auth.userRole === "admin" && (
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-100 mb-4">
                   <h4 className="text-sm font-semibold text-[#1a237e] mb-2">Entreprise declarante</h4>
@@ -958,7 +1288,6 @@ export function Declarations() {
                 </div>
               )}
 
-              {/* Admin Actions */}
               {auth.userRole === "admin" && selectedDeclaration.status === "submitted" && (
                 <div className="mt-6 space-y-3">
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
@@ -975,7 +1304,6 @@ export function Declarations() {
                 </div>
               )}
 
-              {/* Admin view for already processed declarations */}
               {auth.userRole === "admin" && (selectedDeclaration.status === "validated" || selectedDeclaration.status === "rejected") && (
                 <div className={`mt-4 rounded-lg p-4 border ${selectedDeclaration.status === 'validated' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
                   <div className="flex items-center gap-2">
