@@ -269,16 +269,18 @@ export function Declarations() {
     if (!error && decData && decData[0]) {
       const decId = decData[0].id;
       const lineInserts = lines.filter(l => l.subcontractor_name && l.amount_htva).map(l => ({
-        declaration_id: decId,
-        subcontractor_name: l.subcontractor_name,
-        activity_type: l.activity_type || (l.document_type === 'contract' ? 'Contrat' : l.document_type === 'purchase_order' ? 'Bon de Commande' : 'Prestation'),
-        contract_ref: l.contract_ref,
-        amount_htva: parseFloat(l.amount_htva),
-        amount_paid: parseFloat(l.amount_paid) || parseFloat(l.amount_htva),
-        amount_arsp: (parseFloat(l.amount_paid) || parseFloat(l.amount_htva) || 0) * 0.012,
-        contract_id: l.contract_id,
-        document_type: l.document_type,
-      }));
+    declaration_id: decId,
+    subcontractor_name: l.subcontractor_name,
+    activity_type: l.activity_type || (l.document_type === 'contract' ? 'Contrat' : l.document_type === 'purchase_order' ? 'Bon de Commande' : 'Prestation'),
+    contract_ref: l.contract_ref,
+    amount_htva: parseFloat(l.amount_htva),
+    amount_paid: parseFloat(l.amount_paid) || parseFloat(l.amount_htva),
+    contract_id: l.contract_id,
+    document_type: l.document_type,
+}));
+        
+        
+      
       await supabase.from("declaration_lines").insert(lineInserts);
       setShowNew(false);
       setLines([{ 
