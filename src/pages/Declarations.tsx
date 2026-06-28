@@ -290,7 +290,6 @@ export function Declarations() {
         activity_type: l.activity_type || (l.document_type === 'contract' ? 'Contrat' : l.document_type === 'purchase_order' ? 'Bon de Commande' : 'Prestation'),
         contract_ref: l.contract_ref,
         amount_htva: parseFloat(l.amount_htva),
-        amount_paid: parseFloat(l.amount_paid) || parseFloat(l.amount_htva),
         amount_arsp: (parseFloat(l.amount_paid) || parseFloat(l.amount_htva) || 0) * 0.012,
         contract_id: l.contract_id,
         document_type: l.document_type,
