@@ -866,10 +866,5 @@ export function Declarations() {
     </div>
   );
 }
-'''
 
-with open('/mnt/agents/output/Declarations.tsx', 'w') as f:
-    f.write(declarations_tsx)
 
-print("Declarations.tsx written successfully")
-print(f"Length: {len(declarations_tsx)} characters")
