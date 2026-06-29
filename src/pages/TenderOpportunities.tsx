@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/App";
 import { supabase } from "@/lib/supabase";
 import {
   Search, Filter, Plus, FileText, Calendar, DollarSign, MapPin, ChevronRight,
@@ -8,12 +8,12 @@ import {
 } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 
-export default function TenderOpportunities() {
-  const { auth } = useAuth();
+export function TenderOpportunities() {
+  const auth = useAuth();
   const currentUserEmail = auth?.userEmail || "";
-  const currentUserName = auth?.userName || currentUserEmail;
-  const isAdmin = auth?.role === "admin";
-  const isPrime = auth?.role === "prime";
+  const currentUserName = auth?.userEmail?.split("@")[0] || "Utilisateur";
+  const isAdmin = auth?.userRole === "admin";
+  const isPrime = auth?.userRole === "prime";
 
   const [tenders, setTenders] = useState([]);
   const [filteredTenders, setFilteredTenders] = useState([]);
@@ -30,7 +30,6 @@ export default function TenderOpportunities() {
   const [userBids, setUserBids] = useState([]);
   const [toast, setToast] = useState(null);
 
-  // Create tender form
   const [newTender, setNewTender] = useState({
     title: "",
     description: "",
@@ -44,7 +43,6 @@ export default function TenderOpportunities() {
   const [createLoading, setCreateLoading] = useState(false);
   const [createErrors, setCreateErrors] = useState({});
 
-  // Apply form
   const [applyForm, setApplyForm] = useState({
     enterprise_name: currentUserName,
     enterprise_email: currentUserEmail,
@@ -328,7 +326,6 @@ export default function TenderOpportunities() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Toast */}
       {toast && (
         <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white ${
           toast.type === "error" ? "bg-red-600" : "bg-green-600"
@@ -339,7 +336,6 @@ export default function TenderOpportunities() {
         </div>
       )}
 
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Appels d'offres</h1>
@@ -356,7 +352,6 @@ export default function TenderOpportunities() {
         )}
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -382,7 +377,6 @@ export default function TenderOpportunities() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
           <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
@@ -414,7 +408,6 @@ export default function TenderOpportunities() {
         </div>
       </div>
 
-      {/* Tender List */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="animate-spin text-blue-600" size={32} />
@@ -494,22 +487,22 @@ export default function TenderOpportunities() {
                     Details
                   </button>
                   {isPrime && tender.created_by === currentUserEmail && (
-                    <button
-                      onClick={() => openBidsModal(tender)}
-                      className="flex items-center gap-1.5 px-3 py-2 text-sm text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors"
-                    >
-                      <Users size={16} />
-                      Voir candidatures
-                    </button>
-                  )}
-                  {isPrime && tender.created_by === currentUserEmail && (
-                    <button
-                      onClick={() => handleDeleteTender(tender.id)}
-                      className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={16} />
-                      Supprimer
-                    </button>
+                    <>
+                      <button
+                        onClick={() => openBidsModal(tender)}
+                        className="flex items-center gap-1.5 px-3 py-2 text-sm text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors"
+                      >
+                        <Users size={16} />
+                        Voir candidatures
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTender(tender.id)}
+                        className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 size={16} />
+                        Supprimer
+                      </button>
+                    </>
                   )}
                   {(!isPrime || !tender.created_by || tender.created_by !== currentUserEmail) && tender.isOpen && (
                     <button
@@ -531,9 +524,7 @@ export default function TenderOpportunities() {
           ))}
         </div>
       )}
-
-      {/* Create Tender Modal */}
-      {showCreateModal && (
+            {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -674,9 +665,7 @@ export default function TenderOpportunities() {
           </div>
         </div>
       )}
-
-      {/* Apply Modal */}
-      {showApplyModal && selectedTender && (
+            {showApplyModal && selectedTender && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -836,9 +825,7 @@ export default function TenderOpportunities() {
           </div>
         </div>
       )}
-
-      {/* Detail Modal */}
-      {showDetailModal && selectedTender && (
+            {showDetailModal && selectedTender && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -939,7 +926,6 @@ export default function TenderOpportunities() {
         </div>
       )}
 
-      {/* Bids Modal */}
       {showBidsModal && selectedTender && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -1051,3 +1037,5 @@ export default function TenderOpportunities() {
     </div>
   );
 }
+
+export default TenderOpportunities;
