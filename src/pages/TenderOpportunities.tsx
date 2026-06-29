@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/App";
 import { supabase } from "@/lib/supabase";
 import {
   Search, Filter, Plus, FileText, Calendar, DollarSign, MapPin,
-  X, Send, CheckCircle, AlertCircle, Clock, Users, Eye, Trash2,
-  Briefcase, Building2, Mail, Loader2, Check
+  X, Send, Upload, CheckCircle, AlertCircle, Clock, Users, Eye, Trash2,
+  Download, Briefcase, Building2, Mail, Loader2, Check, Paperclip
 } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 
@@ -40,6 +40,7 @@ export function TenderOpportunities() {
     requirements: "",
     prime_contractor_email: currentUserEmail,
     prime_contractor_name: currentUserName,
+    document_file: null,
   });
   const [createLoading, setCreateLoading] = useState(false);
   const [createErrors, setCreateErrors] = useState({});
@@ -49,10 +50,14 @@ export function TenderOpportunities() {
     enterprise_email: currentUserEmail,
     comment: "",
     offer_amount: "",
+    document_file: null,
   });
   const [applyLoading, setApplyLoading] = useState(false);
   const [applyErrors, setApplyErrors] = useState({});
   const [alreadyApplied, setAlreadyApplied] = useState(false);
+
+  const tenderFileRef = useRef(null);
+  const bidFileRef = useRef(null);
 
   useEffect(() => {
     fetchTenders();
@@ -145,6 +150,19 @@ export function TenderOpportunities() {
 
     setCreateLoading(true);
     try {
+      let documentUrl = "";
+      if (newTender.document_file) {
+        const fileName = `tender_${Date.now()}_${newTender.document_file.name}`;
+        const { error: upErr } = await supabase.storage
+          .from("tender_documents")
+          .upload(fileName, newTender.document_file);
+        if (upErr) throw upErr;
+        const { data: urlData } = supabase.storage
+          .from("tender_documents")
+          .getPublicUrl(fileName);
+        documentUrl = urlData.publicUrl;
+      }
+
       const requirements = newTender.requirements
         .split(",")
         .map(r => r.trim())
@@ -160,6 +178,7 @@ export function TenderOpportunities() {
         requirements: requirements.length > 0 ? requirements : [],
         prime_contractor_email: newTender.prime_contractor_email.trim(),
         prime_contractor_name: newTender.prime_contractor_name.trim(),
+        document_url: documentUrl,
         status: "open",
       }]);
 
@@ -169,7 +188,7 @@ export function TenderOpportunities() {
       setShowCreateModal(false);
       setNewTender({
         title: "", description: "", budget: "", deadline: "",
-        province: "", sector: "", requirements: "", prime_contractor_email: currentUserEmail, prime_contractor_name: currentUserName,
+        province: "", sector: "", requirements: "", prime_contractor_email: currentUserEmail, prime_contractor_name: currentUserName, document_file: null,
       });
       setCreateErrors({});
       fetchTenders();
@@ -189,6 +208,7 @@ export function TenderOpportunities() {
       enterprise_email: currentUserEmail,
       comment: "",
       offer_amount: "",
+      document_file: null,
     });
     setApplyErrors({});
     setShowApplyModal(true);
@@ -214,12 +234,26 @@ export function TenderOpportunities() {
 
     setApplyLoading(true);
     try {
+      let documentUrl = "";
+      if (applyForm.document_file) {
+        const fileName = `bid_${Date.now()}_${applyForm.document_file.name}`;
+        const { error: upErr } = await supabase.storage
+          .from("bid_documents")
+          .upload(fileName, applyForm.document_file);
+        if (upErr) throw upErr;
+        const { data: urlData } = supabase.storage
+          .from("bid_documents")
+          .getPublicUrl(fileName);
+        documentUrl = urlData.publicUrl;
+      }
+
       const { error } = await supabase.from("bids").insert([{
         tender_id: selectedTender.id,
         enterprise_name: applyForm.enterprise_name.trim(),
         enterprise_email: applyForm.enterprise_email.trim(),
         comment: applyForm.comment.trim(),
         offer_amount: parseFloat(applyForm.offer_amount),
+        document_url: documentUrl,
         status: "pending",
         submitted_at: new Date().toISOString(),
       }]);
@@ -488,8 +522,7 @@ export function TenderOpportunities() {
           ))}
         </div>
       )}
-
-      {showCreateModal && (
+            {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -589,6 +622,25 @@ export function TenderOpportunities() {
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Ex: Experience 5 ans, Certification ISO, etc."
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Document de l'appel d'offres (PDF, DOC)</label>
+                <div
+                  onClick={() => tenderFileRef.current?.click()}
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                >
+                  <Upload className="mx-auto text-gray-400 mb-2" size={24} />
+                  <p className="text-sm text-gray-600">
+                    {newTender.document_file ? newTender.document_file.name : "Cliquez pour telecharger un document"}
+                  </p>
+                  <input
+                    ref={tenderFileRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={e => setNewTender({ ...newTender, document_file: e.target.files?.[0] || null })}
+                    className="hidden"
+                  />
+                </div>
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button
@@ -703,6 +755,25 @@ export function TenderOpportunities() {
                   />
                   {applyErrors.comment && <p className="text-red-500 text-xs mt-1">{applyErrors.comment}</p>}
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Document de candidature (PDF, DOC)</label>
+                  <div
+                    onClick={() => bidFileRef.current?.click()}
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                  >
+                    <Paperclip className="mx-auto text-gray-400 mb-2" size={24} />
+                    <p className="text-sm text-gray-600">
+                      {applyForm.document_file ? applyForm.document_file.name : "Cliquez pour joindre un document"}
+                    </p>
+                    <input
+                      ref={bidFileRef}
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      onChange={e => setApplyForm({ ...applyForm, document_file: e.target.files?.[0] || null })}
+                      className="hidden"
+                    />
+                  </div>
+                </div>
                 <div className="flex justify-end gap-3 pt-2">
                   <button
                     type="button"
@@ -795,6 +866,20 @@ export function TenderOpportunities() {
                   </div>
                 </div>
               )}
+              {selectedTender.document_url && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Document</h3>
+                  <a
+                    href={selectedTender.document_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                  >
+                    <Download size={16} />
+                    Telecharger le document de l'appel d'offres
+                  </a>
+                </div>
+              )}
               <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <Users size={16} />
@@ -814,10 +899,9 @@ export function TenderOpportunities() {
           </div>
         </div>
       )}
-
-      {showBidsModal && selectedTender && (
+            {showBidsModal && selectedTender && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Candidatures</h2>
@@ -842,12 +926,12 @@ export function TenderOpportunities() {
               ) : (
                 <div className="space-y-4">
                   {selectedTenderBids.map(bid => (
-                    <div key={bid.id} className="border border-gray-100 rounded-xl p-5 hover:shadow-sm transition-shadow">
+                    <div key={bid.id} className="border border-gray-100 rounded-xl p-5 hover:shadow-sm transition-shadow bg-white">
                       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="font-semibold text-gray-900">{bid.enterprise_name}</h3>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          <div className="flex items-center gap-3 mb-3">
+                            <h3 className="font-semibold text-gray-900 text-lg">{bid.enterprise_name}</h3>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               bid.status === "pending" ? "bg-yellow-100 text-yellow-700" :
                               bid.status === "accepted" ? "bg-green-100 text-green-700" :
                               "bg-red-100 text-red-700"
@@ -856,35 +940,76 @@ export function TenderOpportunities() {
                                bid.status === "accepted" ? "Acceptee" : "Rejetee"}
                             </span>
                           </div>
-                          <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-3">
-                            <span className="flex items-center gap-1.5">
-                              <Mail size={14} className="text-gray-400" />
-                              {bid.enterprise_email}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <DollarSign size={14} className="text-green-600" />
-                              {parseFloat(bid.offer_amount).toLocaleString()} USD
-                            </span>
-                          </div>
-                          {bid.comment && (
-                            <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-700">
-                              <p className="font-medium text-gray-600 mb-1">Commentaire:</p>
-                              {bid.comment}
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                            <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
+                              <Mail size={14} className="text-blue-500" />
+                              <span className="font-medium">Email:</span>
+                              <a href={`mailto:${bid.enterprise_email}`} className="text-blue-600 hover:underline truncate">
+                                {bid.enterprise_email}
+                              </a>
                             </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
+                              <DollarSign size={14} className="text-green-600" />
+                              <span className="font-medium">Montant propose:</span>
+                              <span className="text-green-700 font-semibold">
+                                {parseFloat(bid.offer_amount).toLocaleString()} USD
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
+                              <Calendar size={14} className="text-orange-500" />
+                              <span className="font-medium">Date de soumission:</span>
+                              <span>
+                                {bid.submitted_at ? format(parseISO(bid.submitted_at), "dd/MM/yyyy HH:mm") : "Non specifiee"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
+                              <Clock size={14} className="text-purple-500" />
+                              <span className="font-medium">Statut:</span>
+                              <span className={`font-medium ${
+                                bid.status === "pending" ? "text-yellow-700" :
+                                bid.status === "accepted" ? "text-green-700" : "text-red-700"
+                              }`}>
+                                {bid.status === "pending" ? "En attente de decision" :
+                                 bid.status === "accepted" ? "Candidature acceptee" : "Candidature rejetee"}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {bid.comment && (
+                            <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg mb-4">
+                              <p className="font-semibold text-blue-800 text-sm mb-1 flex items-center gap-1.5">
+                                <FileText size={14} />
+                                Proposition / Commentaire
+                              </p>
+                              <p className="text-blue-900 text-sm leading-relaxed">{bid.comment}</p>
+                            </div>
+                          )}
+                          
+                          {bid.document_url && (
+                            <a
+                              href={bid.document_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                            >
+                              <Download size={16} />
+                              Telecharger le document de candidature
+                            </a>
                           )}
                         </div>
                         {bid.status === "pending" && (
-                          <div className="flex md:flex-col gap-2">
+                          <div className="flex md:flex-col gap-2 shrink-0">
                             <button
                               onClick={() => handleUpdateBidStatus(bid.id, "accepted")}
-                              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                              className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors border border-green-200"
                             >
                               <Check size={16} />
                               Accepter
                             </button>
                             <button
                               onClick={() => handleUpdateBidStatus(bid.id, "rejected")}
-                              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                              className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors border border-red-200"
                             >
                               <X size={16} />
                               Rejeter
