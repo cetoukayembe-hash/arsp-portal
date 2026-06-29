@@ -36,7 +36,8 @@ export function TenderOpportunities() {
     description: "",
     budget: "",
     deadline: "",
-    location: "",
+    province: "",
+    sector: "",
     requirements: "",
     prime_contractor_email: currentUserEmail,
     document_file: null,
@@ -120,7 +121,7 @@ export function TenderOpportunities() {
       result = result.filter(t =>
         t.title?.toLowerCase().includes(q) ||
         t.description?.toLowerCase().includes(q) ||
-        t.location?.toLowerCase().includes(q)
+        (t.province?.toLowerCase().includes(q) || t.sector?.toLowerCase().includes(q))
       );
     }
     if (statusFilter !== "all") {
@@ -138,7 +139,8 @@ export function TenderOpportunities() {
     if (!newTender.budget || parseFloat(newTender.budget) <= 0) errors.budget = "Le budget doit etre superieur a 0";
     if (!newTender.deadline) errors.deadline = "La date limite est requise";
     if (newTender.deadline && isPast(parseISO(newTender.deadline))) errors.deadline = "La date limite doit etre dans le futur";
-    if (!newTender.location.trim()) errors.location = "Le lieu est requis";
+    if (!newTender.province.trim()) errors.province = "La province est requise";
+    if (!newTender.sector.trim()) errors.sector = "Le secteur est requis";
     if (!newTender.prime_contractor_email.trim()) errors.prime_contractor_email = "L'email de contact est requis";
     setCreateErrors(errors);
     return Object.keys(errors).length === 0;
@@ -150,19 +152,6 @@ export function TenderOpportunities() {
 
     setCreateLoading(true);
     try {
-      let documentUrl = "";
-      if (newTender.document_file) {
-        const fileName = `tender_${Date.now()}_${newTender.document_file.name}`;
-        const { data: upData, error: upErr } = await supabase.storage
-          .from("tender_documents")
-          .upload(fileName, newTender.document_file);
-        if (upErr) throw upErr;
-        const { data: urlData } = supabase.storage
-          .from("tender_documents")
-          .getPublicUrl(fileName);
-        documentUrl = urlData.publicUrl;
-      }
-
       const requirements = newTender.requirements
         .split(",")
         .map(r => r.trim())
@@ -173,11 +162,11 @@ export function TenderOpportunities() {
         description: newTender.description.trim(),
         budget: parseFloat(newTender.budget),
         deadline: newTender.deadline,
-        location: newTender.location.trim(),
+        province: newTender.province.trim(),
+        sector: newTender.sector.trim(),
         requirements: requirements.length > 0 ? requirements : [],
         prime_contractor_email: newTender.prime_contractor_email.trim(),
-        document_url: documentUrl,
-        created_by: currentUserEmail,
+
         status: "open",
       }]);
 
@@ -187,7 +176,7 @@ export function TenderOpportunities() {
       setShowCreateModal(false);
       setNewTender({
         title: "", description: "", budget: "", deadline: "",
-        location: "", requirements: "", prime_contractor_email: currentUserEmail, document_file: null,
+        province: "", sector: "", requirements: "", prime_contractor_email: currentUserEmail, prime_contractor_name: currentUserName, document_file: null,
       });
       setCreateErrors({});
       fetchTenders();
@@ -236,19 +225,6 @@ export function TenderOpportunities() {
 
     setApplyLoading(true);
     try {
-      let documentUrl = "";
-      if (applyForm.document_file) {
-        const fileName = `bid_${Date.now()}_${applyForm.document_file.name}`;
-        const { data: upData, error: upErr } = await supabase.storage
-          .from("bid_documents")
-          .upload(fileName, applyForm.document_file);
-        if (upErr) throw upErr;
-        const { data: urlData } = supabase.storage
-          .from("bid_documents")
-          .getPublicUrl(fileName);
-        documentUrl = urlData.publicUrl;
-      }
-
       const { error } = await supabase.from("bids").insert([{
         tender_id: selectedTender.id,
         enterprise_name: applyForm.enterprise_name.trim(),
@@ -257,7 +233,6 @@ export function TenderOpportunities() {
         contact_phone: applyForm.contact_phone.trim(),
         proposal_summary: applyForm.proposal_summary.trim(),
         proposed_amount: parseFloat(applyForm.proposed_amount),
-        document_url: documentUrl,
         status: "pending",
       }]);
 
@@ -458,10 +433,10 @@ export function TenderOpportunities() {
                         Limite: {format(parseISO(tender.deadline), "dd/MM/yyyy")}
                       </span>
                     )}
-                    {tender.location && (
+                    {(tender.province || tender.sector) && (
                       <span className="flex items-center gap-1">
                         <MapPin size={14} className="text-blue-500" />
-                        {tender.location}
+                        {[tender.province, tender.sector].filter(Boolean).join(" - ")}
                       </span>
                     )}
                     <span className="flex items-center gap-1">
@@ -592,18 +567,33 @@ export function TenderOpportunities() {
                   {createErrors.deadline && <p className="text-red-500 text-xs mt-1">{createErrors.deadline}</p>}
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Lieu <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  value={newTender.location}
-                  onChange={e => setNewTender({ ...newTender, location: e.target.value })}
-                  className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    createErrors.location ? "border-red-300" : "border-gray-200"
-                  }`}
-                  placeholder="Ex: Kinshasa, RDC"
-                />
-                {createErrors.location && <p className="text-red-500 text-xs mt-1">{createErrors.location}</p>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Province <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={newTender.province}
+                    onChange={e => setNewTender({ ...newTender, province: e.target.value })}
+                    className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      createErrors.province ? "border-red-300" : "border-gray-200"
+                    }`}
+                    placeholder="Ex: Kinshasa"
+                  />
+                  {createErrors.province && <p className="text-red-500 text-xs mt-1">{createErrors.province}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Secteur <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={newTender.sector}
+                    onChange={e => setNewTender({ ...newTender, sector: e.target.value })}
+                    className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      createErrors.sector ? "border-red-300" : "border-gray-200"
+                    }`}
+                    placeholder="Ex: Construction"
+                  />
+                  {createErrors.sector && <p className="text-red-500 text-xs mt-1">{createErrors.sector}</p>}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Email de contact <span className="text-red-500">*</span></label>
@@ -871,9 +861,11 @@ export function TenderOpportunities() {
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
                     <MapPin size={16} />
-                    <span>Lieu</span>
+                    <span>Province / Secteur</span>
                   </div>
-                  <p className="text-lg font-semibold text-gray-900">{selectedTender.location || "Non specifie"}</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {[selectedTender.province, selectedTender.sector].filter(Boolean).join(" - ") || "Non specifie"}
+                  </p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
@@ -895,20 +887,7 @@ export function TenderOpportunities() {
                   </div>
                 </div>
               )}
-              {selectedTender.document_url && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Document</h3>
-                  <a
-                    href={selectedTender.document_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
-                  >
-                    <Download size={16} />
-                    Telecharger le document de l'appel d'offres
-                  </a>
-                </div>
-              )}
+
               <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <Users size={16} />
@@ -998,17 +977,7 @@ export function TenderOpportunities() {
                               {bid.proposal_summary}
                             </div>
                           )}
-                          {bid.document_url && (
-                            <a
-                              href={bid.document_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 mt-3 text-sm text-blue-600 hover:text-blue-700"
-                            >
-                              <Download size={14} />
-                              Voir le document de candidature
-                            </a>
-                          )}
+
                         </div>
                         {bid.status === "pending" && (
                           <div className="flex md:flex-col gap-2">
