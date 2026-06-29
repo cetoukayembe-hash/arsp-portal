@@ -74,7 +74,7 @@ export function TenderOpportunities() {
       const { data, error } = await supabase
         .from("tenders")
         .select("*, bids: bids(count)")
-        .order("created_at", { ascending: false });
+        .order("submitted_at", { ascending: false });
 
       if (error) throw error;
 
@@ -252,7 +252,7 @@ export function TenderOpportunities() {
         .from("bids")
         .select("*")
         .eq("tender_id", tender.id)
-        .order("created_at", { ascending: false });
+        .order("submitted_at", { ascending: false });
       if (error) throw error;
       setSelectedTenderBids(data || []);
     } catch (err) {
