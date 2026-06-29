@@ -38,7 +38,7 @@ export function TenderOpportunities() {
     deadline: "",
     location: "",
     requirements: "",
-    contact_email: currentUserEmail,
+    prime_contractor_email: currentUserEmail,
     document_file: null,
   });
   const [createLoading, setCreateLoading] = useState(false);
@@ -139,7 +139,7 @@ export function TenderOpportunities() {
     if (!newTender.deadline) errors.deadline = "La date limite est requise";
     if (newTender.deadline && isPast(parseISO(newTender.deadline))) errors.deadline = "La date limite doit etre dans le futur";
     if (!newTender.location.trim()) errors.location = "Le lieu est requis";
-    if (!newTender.contact_email.trim()) errors.contact_email = "L'email de contact est requis";
+    if (!newTender.prime_contractor_email.trim()) errors.prime_contractor_email = "L'email de contact est requis";
     setCreateErrors(errors);
     return Object.keys(errors).length === 0;
   }
@@ -175,7 +175,7 @@ export function TenderOpportunities() {
         deadline: newTender.deadline,
         location: newTender.location.trim(),
         requirements: requirements.length > 0 ? requirements : [],
-        contact_email: newTender.contact_email.trim(),
+        prime_contractor_email: newTender.prime_contractor_email.trim(),
         document_url: documentUrl,
         created_by: currentUserEmail,
         status: "open",
@@ -187,7 +187,7 @@ export function TenderOpportunities() {
       setShowCreateModal(false);
       setNewTender({
         title: "", description: "", budget: "", deadline: "",
-        location: "", requirements: "", contact_email: currentUserEmail, document_file: null,
+        location: "", requirements: "", prime_contractor_email: currentUserEmail, document_file: null,
       });
       setCreateErrors({});
       fetchTenders();
@@ -609,14 +609,14 @@ export function TenderOpportunities() {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Email de contact <span className="text-red-500">*</span></label>
                 <input
                   type="email"
-                  value={newTender.contact_email}
-                  onChange={e => setNewTender({ ...newTender, contact_email: e.target.value })}
+                  value={newTender.prime_contractor_email}
+                  onChange={e => setNewTender({ ...newTender, prime_contractor_email: e.target.value })}
                   className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    createErrors.contact_email ? "border-red-300" : "border-gray-200"
+                    createErrors.prime_contractor_email ? "border-red-300" : "border-gray-200"
                   }`}
                   placeholder="contact@entreprise.com"
                 />
-                {createErrors.contact_email && <p className="text-red-500 text-xs mt-1">{createErrors.contact_email}</p>}
+                {createErrors.prime_contractor_email && <p className="text-red-500 text-xs mt-1">{createErrors.prime_contractor_email}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Exigences (separees par des virgules)</label>
@@ -880,7 +880,7 @@ export function TenderOpportunities() {
                     <Mail size={16} />
                     <span>Contact</span>
                   </div>
-                  <p className="text-lg font-semibold text-gray-900">{selectedTender.contact_email || "Non specifie"}</p>
+                  <p className="text-lg font-semibold text-gray-900">{selectedTender.prime_contractor_email || "Non specifie"}</p>
                 </div>
               </div>
               {selectedTender.requirements && selectedTender.requirements.length > 0 && (
