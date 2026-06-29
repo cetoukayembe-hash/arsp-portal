@@ -14,6 +14,7 @@ export function TenderOpportunities() {
   const currentUserName = auth?.userEmail?.split("@")[0] || "Utilisateur";
   const isAdmin = auth?.userRole === "admin";
   const isPrime = auth?.userRole === "prime";
+  
 
   const [tenders, setTenders] = useState([]);
   const [filteredTenders, setFilteredTenders] = useState([]);
@@ -486,7 +487,9 @@ export function TenderOpportunities() {
                     <Eye size={16} />
                     Details
                   </button>
-                  {isPrime && tender.created_by === currentUserEmail && (
+                  {isPrime && tender.prime_contractor_email === currentUserEmail && (
+                  
+    
                     <>
                       <button
                         onClick={() => openBidsModal(tender)}
@@ -504,7 +507,7 @@ export function TenderOpportunities() {
                       </button>
                     </>
                   )}
-                  {(!isPrime || !tender.created_by || tender.created_by !== currentUserEmail) && tender.isOpen && (
+                  {(!isPrime || !tender.prime_contractor_email || tender.prime_contractor_email !== currentUserEmail) && tender.isOpen && (
                     <button
                       onClick={() => openApplyModal(tender)}
                       disabled={userBids.includes(tender.id)}
