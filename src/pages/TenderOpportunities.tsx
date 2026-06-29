@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/App";
 import { supabase } from "@/lib/supabase";
 import {
-  Search, Filter, Plus, FileText, Calendar, DollarSign, MapPin, ChevronRight,
-  X, Send, Upload, CheckCircle, AlertCircle, Clock, Users, Eye, Trash2,
-  Download, Briefcase, Building2, Mail, Phone, Loader2, Paperclip, Check
+  Search, Filter, Plus, FileText, Calendar, DollarSign, MapPin,
+  X, Send, CheckCircle, AlertCircle, Clock, Users, Eye, Trash2,
+  Briefcase, Building2, Mail, Loader2, Check
 } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 
@@ -14,7 +14,6 @@ export function TenderOpportunities() {
   const currentUserName = auth?.userEmail?.split("@")[0] || "Utilisateur";
   const isAdmin = auth?.userRole === "admin";
   const isPrime = auth?.userRole === "prime";
-  
 
   const [tenders, setTenders] = useState([]);
   const [filteredTenders, setFilteredTenders] = useState([]);
@@ -40,7 +39,7 @@ export function TenderOpportunities() {
     sector: "",
     requirements: "",
     prime_contractor_email: currentUserEmail,
-    document_file: null,
+    prime_contractor_name: currentUserName,
   });
   const [createLoading, setCreateLoading] = useState(false);
   const [createErrors, setCreateErrors] = useState({});
@@ -48,18 +47,12 @@ export function TenderOpportunities() {
   const [applyForm, setApplyForm] = useState({
     enterprise_name: currentUserName,
     enterprise_email: currentUserEmail,
-    contact_name: "",
-    contact_phone: "",
-    proposal_summary: "",
-    proposed_amount: "",
-    document_file: null,
+    comment: "",
+    offer_amount: "",
   });
   const [applyLoading, setApplyLoading] = useState(false);
   const [applyErrors, setApplyErrors] = useState({});
   const [alreadyApplied, setAlreadyApplied] = useState(false);
-
-  const fileInputRef = useRef(null);
-  const applyFileInputRef = useRef(null);
 
   useEffect(() => {
     fetchTenders();
@@ -121,7 +114,8 @@ export function TenderOpportunities() {
       result = result.filter(t =>
         t.title?.toLowerCase().includes(q) ||
         t.description?.toLowerCase().includes(q) ||
-        (t.province?.toLowerCase().includes(q) || t.sector?.toLowerCase().includes(q))
+        t.province?.toLowerCase().includes(q) ||
+        t.sector?.toLowerCase().includes(q)
       );
     }
     if (statusFilter !== "all") {
@@ -136,12 +130,11 @@ export function TenderOpportunities() {
     const errors = {};
     if (!newTender.title.trim()) errors.title = "Le titre est requis";
     if (!newTender.description.trim()) errors.description = "La description est requise";
-    if (!newTender.budget || parseFloat(newTender.budget) <= 0) errors.budget = "Le budget doit etre superieur a 0";
+    if (!newTender.budget.trim()) errors.budget = "Le budget est requis";
     if (!newTender.deadline) errors.deadline = "La date limite est requise";
     if (newTender.deadline && isPast(parseISO(newTender.deadline))) errors.deadline = "La date limite doit etre dans le futur";
     if (!newTender.province.trim()) errors.province = "La province est requise";
     if (!newTender.sector.trim()) errors.sector = "Le secteur est requis";
-    if (!newTender.prime_contractor_email.trim()) errors.prime_contractor_email = "L'email de contact est requis";
     setCreateErrors(errors);
     return Object.keys(errors).length === 0;
   }
@@ -160,13 +153,13 @@ export function TenderOpportunities() {
       const { error } = await supabase.from("tenders").insert([{
         title: newTender.title.trim(),
         description: newTender.description.trim(),
-        budget: parseFloat(newTender.budget),
+        budget: newTender.budget.trim(),
         deadline: newTender.deadline,
         province: newTender.province.trim(),
         sector: newTender.sector.trim(),
         requirements: requirements.length > 0 ? requirements : [],
         prime_contractor_email: newTender.prime_contractor_email.trim(),
-
+        prime_contractor_name: newTender.prime_contractor_name.trim(),
         status: "open",
       }]);
 
@@ -176,7 +169,7 @@ export function TenderOpportunities() {
       setShowCreateModal(false);
       setNewTender({
         title: "", description: "", budget: "", deadline: "",
-        province: "", sector: "", requirements: "", prime_contractor_email: currentUserEmail, prime_contractor_name: currentUserName, document_file: null,
+        province: "", sector: "", requirements: "", prime_contractor_email: currentUserEmail, prime_contractor_name: currentUserName,
       });
       setCreateErrors({});
       fetchTenders();
@@ -194,11 +187,8 @@ export function TenderOpportunities() {
     setApplyForm({
       enterprise_name: currentUserName,
       enterprise_email: currentUserEmail,
-      contact_name: "",
-      contact_phone: "",
-      proposal_summary: "",
-      proposed_amount: "",
-      document_file: null,
+      comment: "",
+      offer_amount: "",
     });
     setApplyErrors({});
     setShowApplyModal(true);
@@ -208,9 +198,8 @@ export function TenderOpportunities() {
     const errors = {};
     if (!applyForm.enterprise_name.trim()) errors.enterprise_name = "Le nom de l'entreprise est requis";
     if (!applyForm.enterprise_email.trim()) errors.enterprise_email = "L'email est requis";
-    if (!applyForm.contact_name.trim()) errors.contact_name = "Le nom du contact est requis";
-    if (!applyForm.proposal_summary.trim()) errors.proposal_summary = "Le resume de la proposition est requis";
-    if (!applyForm.proposed_amount || parseFloat(applyForm.proposed_amount) <= 0) errors.proposed_amount = "Le montant propose doit etre superieur a 0";
+    if (!applyForm.comment.trim()) errors.comment = "Le commentaire est requis";
+    if (!applyForm.offer_amount || parseFloat(applyForm.offer_amount) <= 0) errors.offer_amount = "Le montant doit etre superieur a 0";
     setApplyErrors(errors);
     return Object.keys(errors).length === 0;
   }
@@ -229,11 +218,10 @@ export function TenderOpportunities() {
         tender_id: selectedTender.id,
         enterprise_name: applyForm.enterprise_name.trim(),
         enterprise_email: applyForm.enterprise_email.trim(),
-        contact_name: applyForm.contact_name.trim(),
-        contact_phone: applyForm.contact_phone.trim(),
-        proposal_summary: applyForm.proposal_summary.trim(),
-        proposed_amount: parseFloat(applyForm.proposed_amount),
+        comment: applyForm.comment.trim(),
+        offer_amount: parseFloat(applyForm.offer_amount),
         status: "pending",
+        submitted_at: new Date().toISOString(),
       }]);
 
       if (error) throw error;
@@ -424,7 +412,7 @@ export function TenderOpportunities() {
                     {tender.budget && (
                       <span className="flex items-center gap-1">
                         <DollarSign size={14} className="text-green-600" />
-                        Budget: {parseFloat(tender.budget).toLocaleString()} USD
+                        Budget: {tender.budget} USD
                       </span>
                     )}
                     {tender.deadline && (
@@ -463,8 +451,6 @@ export function TenderOpportunities() {
                     Details
                   </button>
                   {isPrime && tender.prime_contractor_email === currentUserEmail && (
-                  
-    
                     <>
                       <button
                         onClick={() => openBidsModal(tender)}
@@ -502,7 +488,8 @@ export function TenderOpportunities() {
           ))}
         </div>
       )}
-            {showCreateModal && (
+
+      {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -542,9 +529,7 @@ export function TenderOpportunities() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Budget (USD) <span className="text-red-500">*</span></label>
                   <input
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="text"
                     value={newTender.budget}
                     onChange={e => setNewTender({ ...newTender, budget: e.target.value })}
                     className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -596,19 +581,6 @@ export function TenderOpportunities() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email de contact <span className="text-red-500">*</span></label>
-                <input
-                  type="email"
-                  value={newTender.prime_contractor_email}
-                  onChange={e => setNewTender({ ...newTender, prime_contractor_email: e.target.value })}
-                  className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    createErrors.prime_contractor_email ? "border-red-300" : "border-gray-200"
-                  }`}
-                  placeholder="contact@entreprise.com"
-                />
-                {createErrors.prime_contractor_email && <p className="text-red-500 text-xs mt-1">{createErrors.prime_contractor_email}</p>}
-              </div>
-              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Exigences (separees par des virgules)</label>
                 <input
                   type="text"
@@ -617,25 +589,6 @@ export function TenderOpportunities() {
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Ex: Experience 5 ans, Certification ISO, etc."
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Document de l'appel d'offres (PDF, DOC)</label>
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
-                >
-                  <Upload className="mx-auto text-gray-400 mb-2" size={24} />
-                  <p className="text-sm text-gray-600">
-                    {newTender.document_file ? newTender.document_file.name : "Cliquez pour telecharger un document"}
-                  </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.doc,.docx"
-                    onChange={e => setNewTender({ ...newTender, document_file: e.target.files?.[0] || null })}
-                    className="hidden"
-                  />
-                </div>
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button
@@ -658,7 +611,8 @@ export function TenderOpportunities() {
           </div>
         </div>
       )}
-            {showApplyModal && selectedTender && (
+
+      {showApplyModal && selectedTender && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -718,83 +672,36 @@ export function TenderOpportunities() {
                     {applyErrors.enterprise_email && <p className="text-red-500 text-xs mt-1">{applyErrors.enterprise_email}</p>}
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom du contact <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      value={applyForm.contact_name}
-                      onChange={e => setApplyForm({ ...applyForm, contact_name: e.target.value })}
-                      className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        applyErrors.contact_name ? "border-red-300" : "border-gray-200"
-                      }`}
-                      placeholder="Nom complet"
-                    />
-                    {applyErrors.contact_name && <p className="text-red-500 text-xs mt-1">{applyErrors.contact_name}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Telephone</label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                      <input
-                        type="tel"
-                        value={applyForm.contact_phone}
-                        onChange={e => setApplyForm({ ...applyForm, contact_phone: e.target.value })}
-                        className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="+243 ..."
-                      />
-                    </div>
-                  </div>
-                </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Resume de la proposition <span className="text-red-500">*</span></label>
-                  <textarea
-                    value={applyForm.proposal_summary}
-                    onChange={e => setApplyForm({ ...applyForm, proposal_summary: e.target.value })}
-                    rows={4}
-                    className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      applyErrors.proposal_summary ? "border-red-300" : "border-gray-200"
-                    }`}
-                    placeholder="Decrivez votre approche, votre experience et vos atouts..."
-                  />
-                  {applyErrors.proposal_summary && <p className="text-red-500 text-xs mt-1">{applyErrors.proposal_summary}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Montant propose (USD) <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Montant de l'offre (USD) <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      value={applyForm.proposed_amount}
-                      onChange={e => setApplyForm({ ...applyForm, proposed_amount: e.target.value })}
+                      value={applyForm.offer_amount}
+                      onChange={e => setApplyForm({ ...applyForm, offer_amount: e.target.value })}
                       className={`w-full pl-9 pr-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        applyErrors.proposed_amount ? "border-red-300" : "border-gray-200"
+                        applyErrors.offer_amount ? "border-red-300" : "border-gray-200"
                       }`}
                       placeholder="45000"
                     />
                   </div>
-                  {applyErrors.proposed_amount && <p className="text-red-500 text-xs mt-1">{applyErrors.proposed_amount}</p>}
+                  {applyErrors.offer_amount && <p className="text-red-500 text-xs mt-1">{applyErrors.offer_amount}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Document de candidature (PDF, DOC)</label>
-                  <div
-                    onClick={() => applyFileInputRef.current?.click()}
-                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
-                  >
-                    <Paperclip className="mx-auto text-gray-400 mb-2" size={24} />
-                    <p className="text-sm text-gray-600">
-                      {applyForm.document_file ? applyForm.document_file.name : "Cliquez pour joindre un document"}
-                    </p>
-                    <input
-                      ref={applyFileInputRef}
-                      type="file"
-                      accept=".pdf,.doc,.docx"
-                      onChange={e => setApplyForm({ ...applyForm, document_file: e.target.files?.[0] || null })}
-                      className="hidden"
-                    />
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Commentaire <span className="text-red-500">*</span></label>
+                  <textarea
+                    value={applyForm.comment}
+                    onChange={e => setApplyForm({ ...applyForm, comment: e.target.value })}
+                    rows={4}
+                    className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      applyErrors.comment ? "border-red-300" : "border-gray-200"
+                    }`}
+                    placeholder="Decrivez votre approche, votre experience et vos atouts..."
+                  />
+                  {applyErrors.comment && <p className="text-red-500 text-xs mt-1">{applyErrors.comment}</p>}
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
                   <button
@@ -818,7 +725,8 @@ export function TenderOpportunities() {
           </div>
         </div>
       )}
-            {showDetailModal && selectedTender && (
+
+      {showDetailModal && selectedTender && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -846,7 +754,7 @@ export function TenderOpportunities() {
                     <span>Budget</span>
                   </div>
                   <p className="text-lg font-semibold text-gray-900">
-                    {selectedTender.budget ? parseFloat(selectedTender.budget).toLocaleString() + " USD" : "Non specifie"}
+                    {selectedTender.budget ? selectedTender.budget + " USD" : "Non specifie"}
                   </p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
@@ -887,7 +795,6 @@ export function TenderOpportunities() {
                   </div>
                 </div>
               )}
-
               <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <Users size={16} />
@@ -954,30 +861,17 @@ export function TenderOpportunities() {
                               <Mail size={14} className="text-gray-400" />
                               {bid.enterprise_email}
                             </span>
-                            {bid.contact_name && (
-                              <span className="flex items-center gap-1.5">
-                                <Users size={14} className="text-gray-400" />
-                                {bid.contact_name}
-                              </span>
-                            )}
-                            {bid.contact_phone && (
-                              <span className="flex items-center gap-1.5">
-                                <Phone size={14} className="text-gray-400" />
-                                {bid.contact_phone}
-                              </span>
-                            )}
                             <span className="flex items-center gap-1.5">
                               <DollarSign size={14} className="text-green-600" />
-                              {parseFloat(bid.proposed_amount).toLocaleString()} USD
+                              {parseFloat(bid.offer_amount).toLocaleString()} USD
                             </span>
                           </div>
-                          {bid.proposal_summary && (
+                          {bid.comment && (
                             <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-700">
-                              <p className="font-medium text-gray-600 mb-1">Proposition:</p>
-                              {bid.proposal_summary}
+                              <p className="font-medium text-gray-600 mb-1">Commentaire:</p>
+                              {bid.comment}
                             </div>
                           )}
-
                         </div>
                         {bid.status === "pending" && (
                           <div className="flex md:flex-col gap-2">
