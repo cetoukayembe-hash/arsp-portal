@@ -247,7 +247,7 @@ export function ComplianceDashboard() {
   async function refreshData() {
     setRefreshing(true);
     await fetchAllData();
-n    setRefreshing(false);
+    setRefreshing(false);
     showToast("Donnees actualisees");
   }
 
