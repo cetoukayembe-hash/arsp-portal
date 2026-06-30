@@ -12,12 +12,11 @@ export async function logAudit(action: string, targetTable?: string, targetId?: 
       target_table: targetTable || null,
       target_id: targetId || null,
       details: details || null,
-      ip_address: null, // Will be added server-side or via edge function later
+      ip_address: null,
       user_agent: navigator.userAgent,
       success: true,
     });
   } catch (error) {
-    // Silently fail — don't break the app if logging fails
     console.error('Audit log failed:', error);
   }
 }
