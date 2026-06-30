@@ -359,7 +359,7 @@ export function ComplianceDashboard() {
     setSubcontractors((data || []).map((s: any) => ({ ...s, prime_name: s.enterprises?.name })));
   }
 
-  async function handleUploadDocument(e: React.FormEvent) {
+    async function handleUploadDocument(e: React.FormEvent) {
     e.preventDefault();
     if (!uploadFile) { showToast("Veuillez selectionner un fichier", "error"); return; }
     setUploading(true);
@@ -368,20 +368,29 @@ export function ComplianceDashboard() {
       const { error: upErr } = await supabase.storage.from("compliance_documents").upload(fileName, uploadFile);
       if (upErr) throw upErr;
       const { data: urlData } = supabase.storage.from("compliance_documents").getPublicUrl(fileName);
-      const { error: dbErr } = await supabase.from("compliance_documents").insert([{
+      const { data: insertedDoc, error: dbErr } = await supabase.from("compliance_documents").insert([{
         name: uploadFile.name, type: uploadDocType, expiry_date: uploadExpiry || null,
         document_url: urlData.publicUrl, enterprise_email: currentUserEmail,
         status: computeStatus(uploadExpiry),
-      }]);
+      }]).select().single();
       if (dbErr) throw dbErr;
       showToast("Document telecharge avec succes");
+      import('@/lib/audit').then(({ logAudit }) => {
+        logAudit('UPLOAD', 'compliance_documents', insertedDoc?.id, {
+          document_name: uploadFile.name,
+          document_type: uploadDocType,
+        });
+      });
       setShowUploadModal(false); setUploadFile(null); setUploadExpiry(""); setUploadDocType("OTHER");
       fetchDocuments();
     } catch (err: any) { showToast("Erreur: " + err.message, "error"); }
     finally { setUploading(false); }
   }
+    
+  
+  
 
-  async function handleDeleteDocument(docId: string, docUrl: string | null) {
+    async function handleDeleteDocument(docId: string, docUrl: string | null) {
     if (!confirm("Supprimer ce document ? Cette action est irreversible.")) return;
     try {
       if (docUrl) {
@@ -390,50 +399,73 @@ export function ComplianceDashboard() {
       }
       const { error } = await supabase.from("compliance_documents").delete().eq("id", docId);
       if (error) throw error;
-      showToast("Document supprime"); fetchDocuments();
+      showToast("Document supprime");
+      import('@/lib/audit').then(({ logAudit }) => {
+        logAudit('DELETE', 'compliance_documents', docId);
+      });
+      fetchDocuments();
     } catch (err: any) { showToast("Erreur: " + err.message, "error"); }
   }
+    
+      
 
-  async function toggleObligation(id: string, current: boolean) {
+    async function toggleObligation(id: string, current: boolean) {
     try {
       const { error } = await supabase.from("compliance_obligations").update({ done: !current }).eq("id", id);
       if (error) throw error;
       setObligations(prev => prev.map(o => o.id === id ? { ...o, done: !current } : o));
       showToast(current ? "Obligation reactivee" : "Obligation accomplie");
+      import('@/lib/audit').then(({ logAudit }) => {
+        logAudit('UPDATE', 'compliance_obligations', id, { done: !current });
+      });
     } catch (err: any) { showToast("Erreur: " + err.message, "error"); }
   }
+    
 
-  async function handleAddObligation(e: React.FormEvent) {
+    async function handleAddObligation(e: React.FormEvent) {
     e.preventDefault();
     if (!newObligation.title.trim() || !newObligation.deadline) {
       showToast("Titre et date limite sont requis", "error"); return;
     }
     setAddingObligation(true);
     try {
-      const { error } = await supabase.from("compliance_obligations").insert([{
+      const { data: inserted, error } = await supabase.from("compliance_obligations").insert([{
         title: newObligation.title.trim(), description: newObligation.description.trim(),
         deadline: newObligation.deadline, done: false, category: newObligation.category,
         priority: newObligation.priority, enterprise_email: currentUserEmail,
-      }]);
+      }]).select().single();
       if (error) throw error;
       showToast("Obligation ajoutee");
+      import('@/lib/audit').then(({ logAudit }) => {
+        logAudit('CREATE', 'compliance_obligations', inserted?.id, {
+          title: newObligation.title,
+          deadline: newObligation.deadline,
+        });
+      });
       setShowAddObligation(false);
       setNewObligation({ title: "", description: "", deadline: "", category: "CUSTOM", priority: "medium" });
       fetchObligations();
     } catch (err: any) { showToast("Erreur: " + err.message, "error"); }
     finally { setAddingObligation(false); }
   }
+    
+     
 
-  async function handleDeleteObligation(id: string) {
+    async function handleDeleteObligation(id: string) {
     if (!confirm("Supprimer cette obligation ?")) return;
     try {
       const { error } = await supabase.from("compliance_obligations").delete().eq("id", id);
       if (error) throw error;
-      showToast("Obligation supprimee"); fetchObligations();
+      showToast("Obligation supprimee");
+      import('@/lib/audit').then(({ logAudit }) => {
+        logAudit('DELETE', 'compliance_obligations', id);
+      });
+      fetchObligations();
     } catch (err: any) { showToast("Erreur: " + err.message, "error"); }
   }
+    
 
-  async function handleAddSubcontractor(e: React.FormEvent) {
+    async function handleAddSubcontractor(e: React.FormEvent) {
     e.preventDefault();
     if (!newSub.name.trim() || !newSub.contract_value || !newSub.total_contract_value) {
       showToast("Nom et montants sont requis", "error"); return;
@@ -449,30 +481,43 @@ export function ComplianceDashboard() {
 
     setAddingSub(true);
     try {
-      const { error } = await supabase.from("subcontractor_checks").insert([{
+      const { data: inserted, error } = await supabase.from("subcontractor_checks").insert([{
         name: newSub.name.trim(), contract_value: cv, total_contract_value: tv,
         congolese_owned: newSub.congolese_owned, arsp_registered: newSub.arsp_registered,
         status, prime_email: currentUserEmail, sector: newSub.sector.trim() || "Non specifie",
-      }]);
+      }]).select().single();
       if (error) throw error;
       showToast("Sous-traitant ajoute");
+      import('@/lib/audit').then(({ logAudit }) => {
+        logAudit('CREATE', 'subcontractor_checks', inserted?.id, {
+          name: newSub.name,
+          contract_ratio: ratio.toFixed(1) + '%',
+          status,
+        });
+      });
       setShowAddSub(false);
       setNewSub({ name: "", contract_value: "", total_contract_value: "", congolese_owned: false, arsp_registered: false, sector: "" });
       fetchSubcontractors();
     } catch (err: any) { showToast("Erreur: " + err.message, "error"); }
     finally { setAddingSub(false); }
   }
+       
 
-  async function handleDeleteSubcontractor(id: string) {
+    async function handleDeleteSubcontractor(id: string) {
     if (!confirm("Supprimer ce sous-traitant ?")) return;
     try {
       const { error } = await supabase.from("subcontractor_checks").delete().eq("id", id);
       if (error) throw error;
-      showToast("Sous-traitant supprime"); fetchSubcontractors();
+      showToast("Sous-traitant supprime");
+      import('@/lib/audit').then(({ logAudit }) => {
+        logAudit('DELETE', 'subcontractor_checks', id);
+      });
+      fetchSubcontractors();
     } catch (err: any) { showToast("Erreur: " + err.message, "error"); }
   }
+    
 
-  async function handleSaveProfile(e: React.FormEvent) {
+    async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
     setSavingProfile(true);
     try {
@@ -484,14 +529,21 @@ export function ComplianceDashboard() {
           rccm_number: editProfile.rccm_number, id_nat: editProfile.id_nat, tax_id: editProfile.tax_id,
         }).eq("id", enterprise.id);
         if (error) throw error;
+        import('@/lib/audit').then(({ logAudit }) => {
+          logAudit('UPDATE', 'enterprises', enterprise.id, { name: editProfile.name });
+        });
       } else {
-        const { error } = await supabase.from("enterprises").insert([{ ...editProfile, email: currentUserEmail, status: "active" }]);
+        const { data: inserted, error } = await supabase.from("enterprises").insert([{ ...editProfile, email: currentUserEmail, status: "active" }]).select().single();
         if (error) throw error;
+        import('@/lib/audit').then(({ logAudit }) => {
+          logAudit('CREATE', 'enterprises', inserted?.id, { name: editProfile.name });
+        });
       }
       showToast("Profil mis a jour"); setShowEditProfile(false); fetchEnterprise();
     } catch (err: any) { showToast("Erreur: " + err.message, "error"); }
     finally { setSavingProfile(false); }
   }
+      
     /* ═══════════════════════════════════════════════════════════════
      COMPUTED STATS
      ═══════════════════════════════════════════════════════════════ */
