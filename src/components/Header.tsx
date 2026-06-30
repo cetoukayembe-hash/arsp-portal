@@ -14,43 +14,77 @@ export function Header() {
     if (auth.isAuthenticated) fetchNotifications();
   }, [auth.isAuthenticated, auth.userRole]);
 
-  async function fetchNotifications() {
-    const notifs = [];
+    async function fetchNotifications() {
+    const notifs: any[] = [];
     const today = new Date();
     const dayOfMonth = today.getDate();
     const currentMonth = ["Janvier","Fevrier","Mars","Avril","Mai","Juin","Juillet","Aout","Septembre","Octobre","Novembre","Decembre"][today.getMonth()];
     const currentYear = today.getFullYear();
 
+    // Fetch persistent notifications from database
+    if (auth.userId) {
+      const { data: dbNotifs } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', auth.userId)
+        .eq('read', false)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (dbNotifs) {
+        dbNotifs.forEach((n) => {
+          notifs.push({
+            id: n.id,
+            message: n.message,
+            type: n.type === 'new_contract' ? 'warning' : n.type === 'contract_accepted' ? 'success' : n.type === 'contract_rejected' ? 'error' : 'info',
+            time: new Date(n.created_at).toLocaleDateString('fr-FR'),
+            link: n.related_type === 'contract' ? '/contracts' : '/dashboard',
+            isDb: true,
+            dbId: n.id,
+          });
+        });
+      }
+    }
+
+    // System-generated notifications (existing logic)
     if (auth.userRole === "admin") {
       const { count: pendingApprovals } = await supabase.from("enterprises").select("*", { count: "exact", head: true }).eq("status", "pending");
-      if (pendingApprovals > 0) notifs.push({ id: "approvals", message: pendingApprovals + " entreprise(s) en attente d approbation", type: "warning", time: "Maintenant", link: "/approvals" });
+      if (pendingApprovals && pendingApprovals > 0) notifs.push({ id: "approvals", message: pendingApprovals + " entreprise(s) en attente d approbation", type: "warning", time: "Maintenant", link: "/approvals", isDb: false });
       const { count: pendingDecl } = await supabase.from("declarations").select("*", { count: "exact", head: true }).eq("status", "submitted");
-      if (pendingDecl > 0) notifs.push({ id: "declarations", message: pendingDecl + " declaration(s) en attente de validation", type: "info", time: "Maintenant", link: "/declarations" });
+      if (pendingDecl && pendingDecl > 0) notifs.push({ id: "declarations", message: pendingDecl + " declaration(s) en attente de validation", type: "info", time: "Maintenant", link: "/declarations", isDb: false });
       const { count: openDisputes } = await supabase.from("disputes").select("*", { count: "exact", head: true }).eq("status", "open");
-      if (openDisputes > 0) notifs.push({ id: "disputes", message: openDisputes + " litige(s) ouverts", type: "warning", time: "Maintenant", link: "/disputes" });
+      if (openDisputes && openDisputes > 0) notifs.push({ id: "disputes", message: openDisputes + " litige(s) ouverts", type: "warning", time: "Maintenant", link: "/disputes", isDb: false });
     }
 
     if (auth.userRole === "prime") {
       if (dayOfMonth > 7) {
         const { count: myDecl } = await supabase.from("declarations").select("*", { count: "exact", head: true }).eq("prime_email", auth.userEmail).eq("month", currentMonth).eq("year", currentYear);
-        if (!myDecl || myDecl === 0) notifs.push({ id: "decl-overdue", message: "Declaration de " + currentMonth + " " + currentYear + " non soumise - En retard!", type: "error", time: "Urgent", link: "/declarations" });
+        if (!myDecl || myDecl === 0) notifs.push({ id: "decl-overdue", message: "Declaration de " + currentMonth + " " + currentYear + " non soumise - En retard!", type: "error", time: "Urgent", link: "/declarations", isDb: false });
       }
       const { count: pendingPayments } = await supabase.from("payments").select("*", { count: "exact", head: true }).eq("payer_email", auth.userEmail).eq("status", "pending");
-      if (pendingPayments > 0) notifs.push({ id: "payments", message: pendingPayments + " paiement(s) en attente", type: "warning", time: "Maintenant", link: "/payments" });
+      if (pendingPayments && pendingPayments > 0) notifs.push({ id: "payments", message: pendingPayments + " paiement(s) en attente", type: "warning", time: "Maintenant", link: "/payments", isDb: false });
       const { count: pendingDecl } = await supabase.from("declarations").select("*", { count: "exact", head: true }).eq("prime_email", auth.userEmail).eq("status", "rejected");
-      if (pendingDecl > 0) notifs.push({ id: "decl-rejected", message: pendingDecl + " declaration(s) rejetee(s) - Action requise", type: "error", time: "Maintenant", link: "/declarations" });
+      if (pendingDecl && pendingDecl > 0) notifs.push({ id: "decl-rejected", message: pendingDecl + " declaration(s) rejetee(s) - Action requise", type: "error", time: "Maintenant", link: "/declarations", isDb: false });
     }
 
     if (auth.userRole === "subcontractor") {
       const { count: tenderCount } = await supabase.from("tenders").select("*", { count: "exact", head: true }).eq("status", "open");
-      if (tenderCount > 0) notifs.push({ id: "tenders", message: tenderCount + " appel(s) d offres disponibles", type: "info", time: "Maintenant", link: "/tenders" });
+      if (tenderCount && tenderCount > 0) notifs.push({ id: "tenders", message: tenderCount + " appel(s) d offres disponibles", type: "info", time: "Maintenant", link: "/tenders", isDb: false });
       const { data: ent } = await supabase.from("enterprises").select("status").eq("email", auth.userEmail).single();
-      if (ent && ent.status === "pending") notifs.push({ id: "registration", message: "Votre inscription est en cours de traitement", type: "warning", time: "En attente", link: "/digital-id" });
-      if (ent && ent.status === "active") notifs.push({ id: "approved", message: "Votre entreprise est agreee ARSP", type: "success", time: "Actif", link: "/digital-id" });
+      if (ent && ent.status === "pending") notifs.push({ id: "registration", message: "Votre inscription est en cours de traitement", type: "warning", time: "En attente", link: "/digital-id", isDb: false });
+      if (ent && ent.status === "active") notifs.push({ id: "approved", message: "Votre entreprise est agreee ARSP", type: "success", time: "Actif", link: "/digital-id", isDb: false });
     }
 
     setNotifications(notifs);
   }
+
+  async function markAsRead(dbId: string) {
+    await supabase.from('notifications').update({ read: true }).eq('id', dbId);
+    fetchNotifications();
+  }
+    
+    
+      
 
   const unreadCount = notifications.length;
 
@@ -94,7 +128,7 @@ export function Header() {
                 {notifications.length === 0 ? (
                   <div className="p-6 text-center text-gray-400 text-sm">Aucune notification</div>
                 ) : notifications.map((n) => (
-                  <div key={n.id} onClick={() => setNotifOpen(false)} className="p-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 cursor-pointer">
+                  <div key={n.id} onClick={() => { if (n.isDb) markAsRead(n.dbId); setNotifOpen(false); }} className="p-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 cursor-pointer">
                     <div className="flex items-start gap-2">
                       <div className={"w-2 h-2 rounded-full mt-1.5 shrink-0 " + (n.type === "error" ? "bg-red-500" : n.type === "warning" ? "bg-amber-500" : n.type === "success" ? "bg-emerald-500" : "bg-blue-500")} />
                       <div>
