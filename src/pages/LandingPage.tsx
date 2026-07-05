@@ -201,7 +201,7 @@ export function LandingPage() {
       {/* Director Message */}
       <section className="py-16 px-4 bg-[#0a2540]">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-8">
-          <img src="/Miguel.jpeg" alt="Directeur ARSP" className="w-72 h-72 rounded-2xl object-cover shadow-lg shrink-0" />
+          <img src="/Ted.jpeg" alt="Directeur ARSP" className="w-72 h-72 rounded-2xl object-cover shadow-lg shrink-0" />
           <div>
             <h2 className="text-2xl font-bold text-white mb-4">Message du Directeur General</h2>
             <p className="text-blue-200 leading-relaxed italic">
