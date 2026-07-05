@@ -571,31 +571,31 @@ export function Declarations() {
   });
 
   const getMax = (arr, key) => Math.max(...arr.map(d => d[key] || 0), 1);
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    return (
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-[#0a2540]">{auth.userRole === "admin" ? "Declarations des Entreprises" : "Mes Declarations Mensuelles"}</h2>
-          <p className="text-sm text-gray-500 mt-1">Declaration mensuelle de sous-traitance ARSP (1.2% du montant paye)</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-[#0a2540]">{auth.userRole === "admin" ? "Declarations des Entreprises" : "Mes Declarations Mensuelles"}</h2>
+          <p className="text-sm text-gray-500 mt-1">Declaration mensuelle ARSP (1.2% du montant paye)</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {auth.userRole === "admin" && (
             <>
-              <button onClick={fetchReportData} className="flex items-center gap-2 px-4 py-2 bg-[#007FFF] text-white rounded-lg text-sm font-medium hover:bg-[#0066CC]">
-                <TrendingUp className="w-4 h-4" />Rapports
+              <button onClick={fetchReportData} className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#007FFF] text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-[#0066CC]">
+                <TrendingUp className="w-4 h-4" /><span className="hidden sm:inline">Rapports</span>
               </button>
-              <button onClick={fetchCumulativeArsp} className="flex items-center gap-2 px-4 py-2 bg-[#1a237e] text-white rounded-lg text-sm font-medium hover:bg-[#0d1b5e]">
-                <BarChart3 className="w-4 h-4" />ARSP cumule
+              <button onClick={fetchCumulativeArsp} className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#1a237e] text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-[#0d1b5e]">
+                <BarChart3 className="w-4 h-4" /><span className="hidden sm:inline">ARSP cumule</span>
               </button>
-              <button onClick={exportToExcel} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
-                Exporter Excel
+              <button onClick={exportToExcel} className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-emerald-700">
+                <span className="hidden sm:inline">Exporter Excel</span><span className="sm:hidden">Excel</span>
               </button>
             </>
           )}
           {auth.userRole === "prime" && (
-            <button onClick={() => { setEditingDeclarationId(null); setShowNew(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#0a2540] text-white rounded-lg text-sm font-medium hover:bg-[#0d2f4f]">
-              <Plus className="w-4 h-4" />Nouvelle declaration
+            <button onClick={() => { setEditingDeclarationId(null); setShowNew(true); }} className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#0a2540] text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-[#0d2f4f]">
+              <Plus className="w-4 h-4" /><span className="hidden sm:inline">Nouvelle declaration</span><span className="sm:hidden">Nouvelle</span>
             </button>
           )}
         </div>
@@ -603,9 +603,9 @@ export function Declarations() {
 
       {/* CUMULATIVE ARSP SECTION */}
       {auth.userRole === "admin" && showCumulative && (
-        <div className="bg-white rounded-xl p-5 card-shadow mb-6">
+        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 mb-4 sm:mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-[#0a2540] flex items-center gap-2">
+            <h3 className="text-base sm:text-lg font-bold text-[#0a2540] flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-[#1a237e]" />
               ARSP cumule par entreprise
             </h3>
@@ -618,33 +618,33 @@ export function Declarations() {
             <p className="text-sm text-gray-500 text-center py-4">Aucune donnee disponible</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[640px] text-sm">
                 <thead className="bg-[#0a2540] text-white">
                   <tr>
-                    <th className="text-left px-4 py-3 text-xs font-semibold">Entreprise</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold">Email</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold">Declarations</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold">Validees</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold">ARSP total (USD)</th>
+                    <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold">Entreprise</th>
+                    <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold">Email</th>
+                    <th className="text-center px-3 sm:px-4 py-3 text-xs font-semibold">Declarations</th>
+                    <th className="text-center px-3 sm:px-4 py-3 text-xs font-semibold">Validees</th>
+                    <th className="text-right px-3 sm:px-4 py-3 text-xs font-semibold">ARSP total (USD)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {cumulativeArsp.map((prime, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-[#0a2540]">{prime.prime_name}</td>
-                      <td className="px-4 py-3 text-xs text-gray-500">{prime.prime_email}</td>
-                      <td className="px-4 py-3 text-xs text-center font-medium">{prime.declaration_count}</td>
-                      <td className="px-4 py-3 text-xs text-center">
+                      <td className="px-3 sm:px-4 py-3 text-sm font-medium text-[#0a2540]">{prime.prime_name}</td>
+                      <td className="px-3 sm:px-4 py-3 text-xs text-gray-500">{prime.prime_email}</td>
+                      <td className="px-3 sm:px-4 py-3 text-xs text-center font-medium">{prime.declaration_count}</td>
+                      <td className="px-3 sm:px-4 py-3 text-xs text-center">
                         <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">{prime.validated_count}</span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-right font-bold text-amber-600">${prime.total_arsp.toFixed(2)}</td>
+                      <td className="px-3 sm:px-4 py-3 text-sm text-right font-bold text-amber-600">${prime.total_arsp.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot className="bg-[#F6F9FC]">
                   <tr>
-                    <td colSpan={4} className="px-4 py-3 text-xs font-bold text-right text-[#0a2540]">Total general:</td>
-                    <td className="px-4 py-3 text-sm text-right font-bold text-amber-600">${cumulativeArsp.reduce((s, p) => s + p.total_arsp, 0).toFixed(2)}</td>
+                    <td colSpan={4} className="px-3 sm:px-4 py-3 text-xs font-bold text-right text-[#0a2540]">Total general:</td>
+                    <td className="px-3 sm:px-4 py-3 text-sm text-right font-bold text-amber-600">${cumulativeArsp.reduce((s, p) => s + p.total_arsp, 0).toFixed(2)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -657,42 +657,42 @@ export function Declarations() {
       {showReports && reportData && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => setShowReports(false)}>
           <div className="bg-white rounded-2xl max-w-5xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-[#0a2540] flex items-center gap-2">
-                  <TrendingUp className="w-6 h-6 text-[#007FFF]" />
+            <div className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h3 className="text-lg sm:text-xl font-bold text-[#0a2540] flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-[#007FFF]" />
                   Tableau de bord ARSP
                 </h3>
                 <button onClick={() => setShowReports(false)}><X className="w-5 h-5 text-gray-500" /></button>
               </div>
 
               {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                <div className="bg-[#0a2540] rounded-xl p-4 text-white text-center">
-                  <p className="text-xs text-gray-300 mb-1">Total declarations</p>
-                  <p className="text-3xl font-bold">{reportData.totalDeclarations}</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+                <div className="bg-[#0a2540] rounded-xl p-3 sm:p-4 text-white text-center">
+                  <p className="text-[10px] sm:text-xs text-gray-300 mb-1">Total declarations</p>
+                  <p className="text-2xl sm:text-3xl font-bold">{reportData.totalDeclarations}</p>
                 </div>
-                <div className="bg-emerald-50 rounded-xl p-4 text-center border border-emerald-100">
-                  <p className="text-xs text-emerald-600 mb-1">ARSP total collecte</p>
-                  <p className="text-2xl font-bold text-emerald-700">${reportData.totalArsp.toFixed(2)}</p>
+                <div className="bg-emerald-50 rounded-xl p-3 sm:p-4 text-center border border-emerald-100">
+                  <p className="text-[10px] sm:text-xs text-emerald-600 mb-1">ARSP total collecte</p>
+                  <p className="text-xl sm:text-2xl font-bold text-emerald-700">${reportData.totalArsp.toFixed(2)}</p>
                 </div>
-                <div className="bg-blue-50 rounded-xl p-4 text-center border border-blue-100">
-                  <p className="text-xs text-blue-600 mb-1">Declarations validees</p>
-                  <p className="text-2xl font-bold text-blue-700">{reportData.statusDist.validated}</p>
+                <div className="bg-blue-50 rounded-xl p-3 sm:p-4 text-center border border-blue-100">
+                  <p className="text-[10px] sm:text-xs text-blue-600 mb-1">Declarations validees</p>
+                  <p className="text-xl sm:text-2xl font-bold text-blue-700">{reportData.statusDist.validated}</p>
                 </div>
-                <div className="bg-amber-50 rounded-xl p-4 text-center border border-amber-100">
-                  <p className="text-xs text-amber-600 mb-1">En attente</p>
-                  <p className="text-2xl font-bold text-amber-700">{reportData.statusDist.submitted}</p>
+                <div className="bg-amber-50 rounded-xl p-3 sm:p-4 text-center border border-amber-100">
+                  <p className="text-[10px] sm:text-xs text-amber-600 mb-1">En attente</p>
+                  <p className="text-xl sm:text-2xl font-bold text-amber-700">{reportData.statusDist.submitted}</p>
                 </div>
               </div>
 
               {/* Monthly ARSP Bar Chart */}
-              <div className="mb-8">
-                <h4 className="text-sm font-bold text-[#0a2540] mb-4 flex items-center gap-2">
+              <div className="mb-6 sm:mb-8">
+                <h4 className="text-xs sm:text-sm font-bold text-[#0a2540] mb-3 sm:mb-4 flex items-center gap-2">
                   <BarChart3 className="w-4 h-4" />
                   ARSP collecte par mois
                 </h4>
-                <div className="bg-[#F6F9FC] rounded-xl p-4">
+                <div className="bg-[#F6F9FC] rounded-xl p-3 sm:p-4">
                   {reportData.monthly.length === 0 ? (
                     <p className="text-sm text-gray-500 text-center py-4">Aucune donnee</p>
                   ) : (
@@ -701,9 +701,9 @@ export function Declarations() {
                         const maxArsp = getMax(reportData.monthly, 'arsp');
                         const pct = (m.arsp / maxArsp) * 100;
                         return (
-                          <div key={i} className="flex items-center gap-3">
-                            <div className="w-24 text-xs font-medium text-gray-600 shrink-0">{m.month} {m.year}</div>
-                            <div className="flex-1 h-8 bg-gray-200 rounded-full overflow-hidden relative">
+                          <div key={i} className="flex items-center gap-2 sm:gap-3">
+                            <div className="w-16 sm:w-24 text-[10px] sm:text-xs font-medium text-gray-600 shrink-0">{m.month} {m.year}</div>
+                            <div className="flex-1 h-6 sm:h-8 bg-gray-200 rounded-full overflow-hidden relative">
                               <div 
                                 className="h-full bg-emerald-500 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
                                 style={{ width: `${Math.max(pct, 5)}%` }}
@@ -711,7 +711,7 @@ export function Declarations() {
                                 {pct > 20 && <span className="text-[10px] text-white font-bold">${m.arsp.toFixed(0)}</span>}
                               </div>
                             </div>
-                            {pct <= 20 && <span className="text-xs text-gray-500 w-16 text-right">${m.arsp.toFixed(0)}</span>}
+                            {pct <= 20 && <span className="text-[10px] sm:text-xs text-gray-500 w-12 sm:w-16 text-right">${m.arsp.toFixed(0)}</span>}
                           </div>
                         );
                       })}
@@ -721,12 +721,12 @@ export function Declarations() {
               </div>
 
               {/* Monthly Declarations Count Chart */}
-              <div className="mb-8">
-                <h4 className="text-sm font-bold text-[#0a2540] mb-4 flex items-center gap-2">
+              <div className="mb-6 sm:mb-8">
+                <h4 className="text-xs sm:text-sm font-bold text-[#0a2540] mb-3 sm:mb-4 flex items-center gap-2">
                   <BarChart3 className="w-4 h-4" />
                   Nombre de declarations par mois
                 </h4>
-                <div className="bg-[#F6F9FC] rounded-xl p-4">
+                <div className="bg-[#F6F9FC] rounded-xl p-3 sm:p-4">
                   {reportData.monthly.length === 0 ? (
                     <p className="text-sm text-gray-500 text-center py-4">Aucune donnee</p>
                   ) : (
@@ -735,9 +735,9 @@ export function Declarations() {
                         const maxCount = getMax(reportData.monthly, 'count');
                         const pct = (m.count / maxCount) * 100;
                         return (
-                          <div key={i} className="flex items-center gap-3">
-                            <div className="w-24 text-xs font-medium text-gray-600 shrink-0">{m.month} {m.year}</div>
-                            <div className="flex-1 h-8 bg-gray-200 rounded-full overflow-hidden relative">
+                          <div key={i} className="flex items-center gap-2 sm:gap-3">
+                            <div className="w-16 sm:w-24 text-[10px] sm:text-xs font-medium text-gray-600 shrink-0">{m.month} {m.year}</div>
+                            <div className="flex-1 h-6 sm:h-8 bg-gray-200 rounded-full overflow-hidden relative">
                               <div 
                                 className="h-full bg-[#007FFF] rounded-full transition-all duration-500 flex items-center justify-end pr-2"
                                 style={{ width: `${Math.max(pct, 5)}%` }}
@@ -745,7 +745,7 @@ export function Declarations() {
                                 {pct > 20 && <span className="text-[10px] text-white font-bold">{m.count}</span>}
                               </div>
                             </div>
-                            {pct <= 20 && <span className="text-xs text-gray-500 w-16 text-right">{m.count}</span>}
+                            {pct <= 20 && <span className="text-[10px] sm:text-xs text-gray-500 w-12 sm:w-16 text-right">{m.count}</span>}
                           </div>
                         );
                       })}
@@ -755,13 +755,13 @@ export function Declarations() {
               </div>
 
               {/* Status Distribution */}
-              <div className="mb-8">
-                <h4 className="text-sm font-bold text-[#0a2540] mb-4 flex items-center gap-2">
+              <div className="mb-6 sm:mb-8">
+                <h4 className="text-xs sm:text-sm font-bold text-[#0a2540] mb-3 sm:mb-4 flex items-center gap-2">
                   <PieChart className="w-4 h-4" />
                   Repartition par statut
                 </h4>
-                <div className="bg-[#F6F9FC] rounded-xl p-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-[#F6F9FC] rounded-xl p-3 sm:p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                     {[
                       { key: 'draft', label: 'Brouillons', color: 'bg-gray-400', textColor: 'text-gray-600' },
                       { key: 'submitted', label: 'Soumises', color: 'bg-blue-500', textColor: 'text-blue-600' },
@@ -772,11 +772,11 @@ export function Declarations() {
                       const total = reportData.totalDeclarations || 1;
                       const pct = ((count / total) * 100).toFixed(1);
                       return (
-                        <div key={s.key} className="bg-white rounded-lg p-3 text-center">
+                        <div key={s.key} className="bg-white rounded-lg p-2 sm:p-3 text-center">
                           <div className={`w-3 h-3 rounded-full ${s.color} mx-auto mb-2`}></div>
-                          <p className="text-2xl font-bold text-[#0a2540]">{count}</p>
-                          <p className="text-xs text-gray-500">{s.label}</p>
-                          <p className={`text-xs font-medium ${s.textColor}`}>{pct}%</p>
+                          <p className="text-xl sm:text-2xl font-bold text-[#0a2540]">{count}</p>
+                          <p className="text-[10px] sm:text-xs text-gray-500">{s.label}</p>
+                          <p className={`text-[10px] sm:text-xs font-medium ${s.textColor}`}>{pct}%</p>
                         </div>
                       );
                     })}
@@ -786,25 +786,25 @@ export function Declarations() {
 
               {/* Yearly Summary Table */}
               <div>
-                <h4 className="text-sm font-bold text-[#0a2540] mb-4 flex items-center gap-2">
+                <h4 className="text-xs sm:text-sm font-bold text-[#0a2540] mb-3 sm:mb-4 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4" />
                   Recapitulatif annuel
                 </h4>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full min-w-[400px] text-sm">
                     <thead className="bg-[#0a2540] text-white">
                       <tr>
-                        <th className="text-left px-4 py-3 text-xs font-semibold">Annee</th>
-                        <th className="text-center px-4 py-3 text-xs font-semibold">Declarations</th>
-                        <th className="text-right px-4 py-3 text-xs font-semibold">ARSP collecte (USD)</th>
+                        <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold">Annee</th>
+                        <th className="text-center px-3 sm:px-4 py-3 text-xs font-semibold">Declarations</th>
+                        <th className="text-right px-3 sm:px-4 py-3 text-xs font-semibold">ARSP collecte (USD)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {reportData.yearly.map((y, i) => (
                         <tr key={i} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm font-medium text-[#0a2540]">{y.year}</td>
-                          <td className="px-4 py-3 text-xs text-center">{y.count}</td>
-                          <td className="px-4 py-3 text-sm text-right font-bold text-emerald-600">${y.arsp.toFixed(2)}</td>
+                          <td className="px-3 sm:px-4 py-3 text-sm font-medium text-[#0a2540]">{y.year}</td>
+                          <td className="px-3 sm:px-4 py-3 text-xs text-center">{y.count}</td>
+                          <td className="px-3 sm:px-4 py-3 text-sm text-right font-bold text-emerald-600">${y.arsp.toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -817,7 +817,7 @@ export function Declarations() {
       )}
 
       {auth.userRole === "admin" && (
-        <div className="bg-white rounded-xl p-4 card-shadow mb-4 space-y-3">
+        <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 mb-4 space-y-3">
           <input
             type="text"
             placeholder="Rechercher par nom ou email..."
@@ -836,7 +836,7 @@ export function Declarations() {
               <button
                 key={f.key}
                 onClick={() => setStatusFilter(f.key)}
-                className={"px-3 py-1.5 rounded-lg text-xs font-medium transition-colors " + (statusFilter === f.key ? "bg-[#0a2540] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}
+                className={"px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-colors " + (statusFilter === f.key ? "bg-[#0a2540] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}
               >
                 {f.label}
                 {f.key !== "all" && (
@@ -849,20 +849,20 @@ export function Declarations() {
       )}
 
       {auth.userRole === "prime" && isOverdue && !hasCurrentDeclaration && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-center gap-3">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-semibold text-red-700">Declaration en retard!</p>
             <p className="text-xs text-red-600">Vous navez pas soumis votre declaration pour {currentMonth} {currentYear}. Date limite: le 7 du mois.</p>
           </div>
-          <button onClick={() => setShowNew(true)} className="ml-auto px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600 shrink-0">Soumettre maintenant</button>
+          <button onClick={() => setShowNew(true)} className="w-full sm:w-auto px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600 shrink-0">Soumettre maintenant</button>
         </div>
       )}
 
       {loading ? (
         <div className="text-center py-12 text-gray-500">Chargement...</div>
       ) : declarations.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl card-shadow">
+        <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
           <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">Aucune declaration</p>
           {auth.userRole === "prime" && <button onClick={() => setShowNew(true)} className="mt-3 text-sm text-[#007FFF] hover:underline">Creer votre premiere declaration</button>}
@@ -875,25 +875,25 @@ export function Declarations() {
             const isDraft = d.status === 'draft';
             const isPrimeOwner = auth.userRole === 'prime' && d.prime_email === auth.userEmail;
             return (
-              <div key={d.id} className="bg-white rounded-xl p-5 card-shadow hover:card-shadow-hover transition-all cursor-pointer group">
-                <div className="flex items-center justify-between gap-4">
+              <div key={d.id} className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer group">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div 
-                    className="flex items-center gap-4 flex-1"
+                    className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0"
                     onClick={() => { setSelectedDeclaration(d); fetchDeclarationLines(d.id); }}
                   >
-                    <div className="w-12 h-12 rounded-xl bg-[#0a2540] text-white flex items-center justify-center shrink-0"><FileText className="w-5 h-5" /></div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-semibold text-[#0a2540]">{d.month} {d.year}</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#0a2540] text-white flex items-center justify-center shrink-0"><FileText className="w-4 h-4 sm:w-5 sm:h-5" /></div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="text-base sm:text-lg font-semibold text-[#0a2540]">{d.month} {d.year}</h3>
                         <span className={"px-2 py-0.5 rounded-full text-[10px] font-bold uppercase " + status.color}>{status.label}</span>
                       </div>
-                      <p className="text-sm text-gray-500">{d.prime_name}</p>
-                      {auth.userRole === "admin" && <p className="text-xs text-gray-400">{d.prime_email}</p>}
+                      <p className="text-sm text-gray-500 truncate">{d.prime_name}</p>
+                      {auth.userRole === "admin" && <p className="text-xs text-gray-400 truncate">{d.prime_email}</p>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
                     {isDraft && isPrimeOwner && (
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleEditDeclaration(d); }}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -910,7 +910,7 @@ export function Declarations() {
                         </button>
                       </div>
                     )}
-                    <Icon className="w-5 h-5 text-gray-400 shrink-0" />
+                    <Icon className="w-5 h-5 text-gray-400 shrink-0 ml-auto sm:ml-0" />
                   </div>
                 </div>
               </div>
@@ -918,33 +918,32 @@ export function Declarations() {
           })}
         </div>
       )}
-
-      {/* NEW / EDIT DECLARATION MODAL */}
+            {/* NEW / EDIT DECLARATION MODAL */}
       {showNew && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setShowNew(false); setEditingDeclarationId(null); }}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-4" onClick={() => { setShowNew(false); setEditingDeclarationId(null); }}>
           <div className="bg-white rounded-2xl max-w-4xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-[#0a2540]">{editingDeclarationId ? "Modifier la declaration" : "Nouvelle declaration mensuelle"}</h3>
+            <div className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h3 className="text-base sm:text-lg font-bold text-[#0a2540]">{editingDeclarationId ? "Modifier la declaration" : "Nouvelle declaration mensuelle"}</h3>
                 <button onClick={() => { setShowNew(false); setEditingDeclarationId(null); }}><X className="w-5 h-5 text-gray-500" /></button>
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="md:col-span-1">
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">Entreprise principale</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-1">
+                    <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">Entreprise principale</label>
                     <div className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-[#0a2540] font-medium">
                       {primeDetails.name || "Chargement..."}
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">Mois</label>
+                    <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">Mois</label>
                     <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" value={newDeclaration.month} onChange={(e) => setNewDeclaration({...newDeclaration, month: e.target.value})}>
                       {months.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">Annee</label>
+                    <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">Annee</label>
                     <select className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" value={newDeclaration.year} onChange={(e) => setNewDeclaration({...newDeclaration, year: parseInt(e.target.value)})}>
                       {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
@@ -953,13 +952,13 @@ export function Declarations() {
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-gray-700">Paiements aux sous-traitants</label>
+                    <label className="text-xs sm:text-sm font-medium text-gray-700">Paiements aux sous-traitants</label>
                     <button onClick={addLine} className="flex items-center gap-1 text-xs text-[#007FFF] hover:underline"><Plus className="w-3 h-3" />Ajouter une ligne</button>
                   </div>
 
                   <div className="space-y-3">
                     {lines.map((line, i) => (
-                      <div key={i} className="bg-[#F6F9FC] rounded-xl p-4 space-y-3">
+                      <div key={i} className="bg-[#F6F9FC] rounded-xl p-3 sm:p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-semibold text-gray-500">Ligne {i + 1}</span>
@@ -1020,8 +1019,8 @@ export function Declarations() {
                           )}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                          <div className="md:col-span-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                          <div className="sm:col-span-3">
                             <label className="text-xs text-gray-500 mb-1 block">Sous-traitant</label>
                             <input 
                               className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm" 
@@ -1031,7 +1030,7 @@ export function Declarations() {
                               readOnly={!line.manualEntry && line.contract_id}
                             />
                           </div>
-                          <div className="md:col-span-2">
+                          <div className="sm:col-span-2">
                             <label className="text-xs text-gray-500 mb-1 block">Activite</label>
                             <input 
                               className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm" 
@@ -1040,7 +1039,7 @@ export function Declarations() {
                               onChange={(e) => updateLine(i, "activity_type", e.target.value)} 
                             />
                           </div>
-                          <div className="md:col-span-2">
+                          <div className="sm:col-span-2">
                             <label className="text-xs text-gray-500 mb-1 block">Ref contrat</label>
                             <input 
                               className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm" 
@@ -1050,7 +1049,7 @@ export function Declarations() {
                               readOnly={!line.manualEntry && line.contract_id}
                             />
                           </div>
-                          <div className="md:col-span-2">
+                          <div className="sm:col-span-2">
                             <label className="text-xs text-gray-500 mb-1 block">Valeur contrat (USD)</label>
                             <input 
                               type="number" 
@@ -1060,7 +1059,7 @@ export function Declarations() {
                               readOnly
                             />
                           </div>
-                          <div className="md:col-span-3">
+                          <div className="sm:col-span-3">
                             <label className="text-xs text-emerald-700 font-medium mb-1 block">Montant paye ce mois (USD)</label>
                             <input 
                               type="number" 
@@ -1082,35 +1081,35 @@ export function Declarations() {
                   </div>
                 </div>
 
-                <div className="bg-[#0a2540] rounded-xl p-4 text-white">
-                  <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="bg-[#0a2540] rounded-xl p-3 sm:p-4 text-white">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
                     <div>
-                      <p className="text-xs text-gray-300 mb-1">Total valeur contrats</p>
-                      <p className="text-lg font-bold">${calculateTotalHtva().toFixed(2)}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-300 mb-1">Total valeur contrats</p>
+                      <p className="text-base sm:text-lg font-bold">${calculateTotalHtva().toFixed(2)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-300 mb-1">Total paye ce mois</p>
-                      <p className="text-lg font-bold text-emerald-300">${calculateTotalPaid().toFixed(2)}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-300 mb-1">Total paye ce mois</p>
+                      <p className="text-base sm:text-lg font-bold text-emerald-300">${calculateTotalPaid().toFixed(2)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-amber-300 mb-1">ARSP du (1.2%)</p>
-                      <p className="text-xl font-bold text-amber-400">${calculateArsp().toFixed(2)}</p>
+                      <p className="text-[10px] sm:text-xs text-amber-300 mb-1">ARSP du (1.2%)</p>
+                      <p className="text-lg sm:text-xl font-bold text-amber-400">${calculateArsp().toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Preuve de paiement ARSP</label>
-                  <div className={"border-2 border-dashed rounded-xl p-4 text-center " + (proofFile ? "border-emerald-400 bg-emerald-50" : "border-gray-300 hover:border-[#007FFF]")}>
+                  <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">Preuve de paiement ARSP</label>
+                  <div className={"border-2 border-dashed rounded-xl p-3 sm:p-4 text-center " + (proofFile ? "border-emerald-400 bg-emerald-50" : "border-gray-300 hover:border-[#007FFF]")}>
                     <Upload className="w-5 h-5 text-gray-400 mx-auto mb-1" />
                     <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" id="proof-upload" onChange={(e) => setProofFile(e.target.files ? e.target.files[0] : null)} />
                     <label htmlFor="proof-upload" className="cursor-pointer text-xs text-[#007FFF] hover:underline">{proofFile ? proofFile.name : "Cliquer pour uploader la preuve de paiement"}</label>
                   </div>
                 </div>
 
-                <div className="flex gap-3">
-                  <button onClick={() => handleSubmit("draft")} disabled={submitting} className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50">{editingDeclarationId ? "Enregistrer modifications" : "Enregistrer brouillon"}</button>
-                  <button onClick={() => handleSubmit("submitted")} disabled={submitting || !primeDetails.name} className="flex-1 py-2.5 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC] disabled:opacity-50">{submitting ? "Envoi..." : "Soumettre la declaration"}</button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button onClick={() => handleSubmit("draft")} disabled={submitting} className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50 text-sm">{editingDeclarationId ? "Enregistrer modifications" : "Enregistrer brouillon"}</button>
+                  <button onClick={() => handleSubmit("submitted")} disabled={submitting || !primeDetails.name} className="flex-1 py-2.5 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC] disabled:opacity-50 text-sm">{submitting ? "Envoi..." : "Soumettre la declaration"}</button>
                 </div>
               </div>
             </div>
@@ -1120,28 +1119,28 @@ export function Declarations() {
 
       {/* DETAIL MODAL */}
       {selectedDeclaration && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedDeclaration(null)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-4" onClick={() => setSelectedDeclaration(null)}>
           <div className="bg-white rounded-2xl max-w-5xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-[#0a2540]">Declaration {selectedDeclaration.month} {selectedDeclaration.year}</h3>
-                  <p className="text-sm text-gray-500">{selectedDeclaration.prime_name} — {selectedDeclaration.prime_email}</p>
+            <div className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div className="min-w-0">
+                  <h3 className="text-lg sm:text-xl font-bold text-[#0a2540] truncate">Declaration {selectedDeclaration.month} {selectedDeclaration.year}</h3>
+                  <p className="text-sm text-gray-500 truncate">{selectedDeclaration.prime_name} — {selectedDeclaration.prime_email}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   {auth.userRole === 'prime' && selectedDeclaration.status === 'draft' && (
                     <>
                       <button 
                         onClick={() => { handleEditDeclaration(selectedDeclaration); setSelectedDeclaration(null); }}
                         className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       >
-                        <Pencil className="w-4 h-4" />Modifier
+                        <Pencil className="w-4 h-4" /><span className="hidden sm:inline">Modifier</span>
                       </button>
                       <button 
                         onClick={() => { handleDeleteDeclaration(selectedDeclaration.id); setSelectedDeclaration(null); }}
                         className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       >
-                        <Trash className="w-4 h-4" />Supprimer
+                        <Trash className="w-4 h-4" /><span className="hidden sm:inline">Supprimer</span>
                       </button>
                     </>
                   )}
@@ -1149,7 +1148,7 @@ export function Declarations() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 mb-4">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
                 <span className={"px-2 py-0.5 rounded-full text-xs font-bold uppercase " + (statusConfig[selectedDeclaration.status] ? statusConfig[selectedDeclaration.status].color : "")}>
                   {statusConfig[selectedDeclaration.status] ? statusConfig[selectedDeclaration.status].label : ""}
                 </span>
@@ -1162,32 +1161,32 @@ export function Declarations() {
               </div>
 
               {auth.userRole === "admin" && declarationLines.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
-                  <div className="bg-[#F6F9FC] rounded-xl p-4 text-center">
-                    <p className="text-xs text-gray-500 mb-1">Lignes declarees</p>
-                    <p className="text-2xl font-bold text-[#0a2540]">{declarationLines.length}</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
+                  <div className="bg-[#F6F9FC] rounded-xl p-3 sm:p-4 text-center">
+                    <p className="text-[10px] sm:text-xs text-gray-500 mb-1">Lignes declarees</p>
+                    <p className="text-xl sm:text-2xl font-bold text-[#0a2540]">{declarationLines.length}</p>
                   </div>
-                  <div className="bg-[#F6F9FC] rounded-xl p-4 text-center">
-                    <p className="text-xs text-gray-500 mb-1">Valeur totale contrats</p>
-                    <p className="text-2xl font-bold text-[#0a2540]">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_htva), 0).toFixed(2)}</p>
+                  <div className="bg-[#F6F9FC] rounded-xl p-3 sm:p-4 text-center">
+                    <p className="text-[10px] sm:text-xs text-gray-500 mb-1">Valeur totale contrats</p>
+                    <p className="text-xl sm:text-2xl font-bold text-[#0a2540]">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_htva), 0).toFixed(2)}</p>
                   </div>
-                  <div className="bg-emerald-50 rounded-xl p-4 text-center border border-emerald-100">
-                    <p className="text-xs text-emerald-600 mb-1">Total paye ce mois</p>
-                    <p className="text-2xl font-bold text-emerald-700">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_paid || l.amount_htva), 0).toFixed(2)}</p>
+                  <div className="bg-emerald-50 rounded-xl p-3 sm:p-4 text-center border border-emerald-100">
+                    <p className="text-[10px] sm:text-xs text-emerald-600 mb-1">Total paye ce mois</p>
+                    <p className="text-xl sm:text-2xl font-bold text-emerald-700">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_paid || l.amount_htva), 0).toFixed(2)}</p>
                   </div>
-                  <div className="bg-amber-50 rounded-xl p-4 text-center border border-amber-100">
-                    <p className="text-xs text-amber-600 mb-1">ARSP du (1.2%)</p>
-                    <p className="text-2xl font-bold text-amber-700">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_arsp), 0).toFixed(2)}</p>
+                  <div className="bg-amber-50 rounded-xl p-3 sm:p-4 text-center border border-amber-100">
+                    <p className="text-[10px] sm:text-xs text-amber-600 mb-1">ARSP du (1.2%)</p>
+                    <p className="text-xl sm:text-2xl font-bold text-amber-700">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_arsp), 0).toFixed(2)}</p>
                   </div>
                 </div>
               )}
 
               {auth.userRole === "admin" && (
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100 mb-4">
+                <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-100 mb-4">
                   <h4 className="text-sm font-semibold text-[#1a237e] mb-2">Entreprise declarante</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-600">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-600">
                     <div><span className="text-gray-400">Nom:</span> {selectedDeclaration.prime_name}</div>
-                    <div><span className="text-gray-400">Email:</span> {selectedDeclaration.prime_email}</div>
+                    <div><span className="text-gray-400">Email:</span> <span className="break-all">{selectedDeclaration.prime_email}</span></div>
                     <div><span className="text-gray-400">Mois:</span> {selectedDeclaration.month}</div>
                     <div><span className="text-gray-400">Annee:</span> {selectedDeclaration.year}</div>
                   </div>
@@ -1201,41 +1200,41 @@ export function Declarations() {
                 </div>
               ) : declarationLines.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full min-w-[640px] text-sm">
                     <thead className="bg-[#0a2540] text-white">
                       <tr>
-                        <th className="text-left px-3 py-2 text-xs font-semibold">Type</th>
-                        <th className="text-left px-3 py-2 text-xs font-semibold">Sous-traitant</th>
-                        <th className="text-left px-3 py-2 text-xs font-semibold">Activite</th>
-                        <th className="text-left px-3 py-2 text-xs font-semibold">Ref</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold">Valeur (USD)</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold">Paye (USD)</th>
-                        <th className="text-right px-3 py-2 text-xs font-semibold">ARSP (USD)</th>
-                        <th className="text-center px-3 py-2 text-xs font-semibold">Action</th>
+                        <th className="text-left px-2 sm:px-3 py-2 text-xs font-semibold">Type</th>
+                        <th className="text-left px-2 sm:px-3 py-2 text-xs font-semibold">Sous-traitant</th>
+                        <th className="text-left px-2 sm:px-3 py-2 text-xs font-semibold hidden sm:table-cell">Activite</th>
+                        <th className="text-left px-2 sm:px-3 py-2 text-xs font-semibold hidden sm:table-cell">Ref</th>
+                        <th className="text-right px-2 sm:px-3 py-2 text-xs font-semibold">Valeur (USD)</th>
+                        <th className="text-right px-2 sm:px-3 py-2 text-xs font-semibold">Paye (USD)</th>
+                        <th className="text-right px-2 sm:px-3 py-2 text-xs font-semibold">ARSP (USD)</th>
+                        <th className="text-center px-2 sm:px-3 py-2 text-xs font-semibold">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {declarationLines.map((line) => (
                         <tr key={line.id} className="hover:bg-gray-50">
-                          <td className="px-3 py-2">
+                          <td className="px-2 sm:px-3 py-2">
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${docTypeConfig[line.document_type]?.color || docTypeConfig.manual.color}`}>
                               {docTypeConfig[line.document_type]?.label || 'Manuel'}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-xs font-medium text-[#0a2540]">{line.subcontractor_name}</td>
-                          <td className="px-3 py-2 text-xs text-gray-500">{line.activity_type}</td>
-                          <td className="px-3 py-2 text-xs text-gray-500">{line.contract_ref}</td>
-                          <td className="px-3 py-2 text-xs text-right">${parseFloat(line.amount_htva).toFixed(2)}</td>
-                          <td className="px-3 py-2 text-xs text-right font-medium text-emerald-600">${parseFloat(line.amount_paid || line.amount_htva).toFixed(2)}</td>
-                          <td className="px-3 py-2 text-xs text-right font-medium text-red-600">${parseFloat(line.amount_arsp).toFixed(2)}</td>
-                          <td className="px-3 py-2 text-center">
+                          <td className="px-2 sm:px-3 py-2 text-xs font-medium text-[#0a2540]">{line.subcontractor_name}</td>
+                          <td className="px-2 sm:px-3 py-2 text-xs text-gray-500 hidden sm:table-cell">{line.activity_type}</td>
+                          <td className="px-2 sm:px-3 py-2 text-xs text-gray-500 hidden sm:table-cell">{line.contract_ref}</td>
+                          <td className="px-2 sm:px-3 py-2 text-xs text-right">${parseFloat(line.amount_htva).toFixed(2)}</td>
+                          <td className="px-2 sm:px-3 py-2 text-xs text-right font-medium text-emerald-600">${parseFloat(line.amount_paid || line.amount_htva).toFixed(2)}</td>
+                          <td className="px-2 sm:px-3 py-2 text-xs text-right font-medium text-red-600">${parseFloat(line.amount_arsp).toFixed(2)}</td>
+                          <td className="px-2 sm:px-3 py-2 text-center">
                             {line.contract_id && (
                               <button 
                                 onClick={() => fetchContractDetails(line.contract_id)}
                                 className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-[#1a237e] bg-blue-50 hover:bg-blue-100 rounded transition-colors"
                                 title="Voir le contrat"
                               >
-                                <Eye className="w-3 h-3" />Voir contrat
+                                <Eye className="w-3 h-3" /><span className="hidden sm:inline">Voir contrat</span>
                               </button>
                             )}
                           </td>
@@ -1244,10 +1243,10 @@ export function Declarations() {
                     </tbody>
                     <tfoot className="bg-[#0a2540] text-white">
                       <tr>
-                        <td colSpan={4} className="px-3 py-2 text-xs font-bold text-right">Totaux:</td>
-                        <td className="px-3 py-2 text-xs font-bold text-right">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_htva), 0).toFixed(2)}</td>
-                        <td className="px-3 py-2 text-xs font-bold text-right text-emerald-300">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_paid || l.amount_htva), 0).toFixed(2)}</td>
-                        <td className="px-3 py-2 text-xs font-bold text-right text-amber-400">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_arsp), 0).toFixed(2)}</td>
+                        <td colSpan={4} className="px-2 sm:px-3 py-2 text-xs font-bold text-right hidden sm:table-cell">Totaux:</td>
+                        <td className="px-2 sm:px-3 py-2 text-xs font-bold text-right">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_htva), 0).toFixed(2)}</td>
+                        <td className="px-2 sm:px-3 py-2 text-xs font-bold text-right text-emerald-300">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_paid || l.amount_htva), 0).toFixed(2)}</td>
+                        <td className="px-2 sm:px-3 py-2 text-xs font-bold text-right text-amber-400">${declarationLines.reduce((s, l) => s + parseFloat(l.amount_arsp), 0).toFixed(2)}</td>
                         <td></td>
                       </tr>
                     </tfoot>
@@ -1268,7 +1267,7 @@ export function Declarations() {
               ) : auth.userRole === "prime" && selectedDeclaration.status !== "validated" ? (
                 <div className="mt-4">
                   <label className="text-sm font-medium text-gray-700 mb-1 block">Ajouter preuve de paiement</label>
-                  <div className="border-2 border-dashed rounded-xl p-4 text-center border-gray-300 hover:border-[#007FFF]">
+                  <div className="border-2 border-dashed rounded-xl p-3 sm:p-4 text-center border-gray-300 hover:border-[#007FFF]">
                     <Upload className="w-5 h-5 text-gray-400 mx-auto mb-1" />
                     <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" id="proof-upload-detail"
                       onChange={async (e) => {
@@ -1282,21 +1281,21 @@ export function Declarations() {
               ) : null}
 
               {selectedDeclaration.rejection_reason && (
-                <div className="bg-red-50 rounded-lg p-4 border border-red-200 mt-4">
+                <div className="bg-red-50 rounded-lg p-3 sm:p-4 border border-red-200 mt-4">
                   <p className="text-sm font-semibold text-red-700 mb-1">Motif du rejet:</p>
                   <p className="text-sm text-red-600">{selectedDeclaration.rejection_reason}</p>
                 </div>
               )}
 
               {auth.userRole === "admin" && selectedDeclaration.status === "submitted" && (
-                <div className="mt-6 space-y-3">
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="mt-4 sm:mt-6 space-y-3">
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4">
                     <p className="text-sm font-medium text-amber-800 mb-3">Action administrative</p>
-                    <div className="flex gap-3">
-                      <button onClick={() => handleAdminAction(selectedDeclaration.id, "validated", undefined)} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button onClick={() => handleAdminAction(selectedDeclaration.id, "validated", undefined)} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2 text-sm">
                         <CheckCircle2 className="w-4 h-4" />Valider la declaration
                       </button>
-                      <button onClick={() => { const reason = prompt("Motif du rejet:"); if (reason) handleAdminAction(selectedDeclaration.id, "rejected", reason); }} className="flex-1 py-2.5 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 flex items-center justify-center gap-2">
+                      <button onClick={() => { const reason = prompt("Motif du rejet:"); if (reason) handleAdminAction(selectedDeclaration.id, "rejected", reason); }} className="flex-1 py-2.5 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 flex items-center justify-center gap-2 text-sm">
                         <AlertTriangle className="w-4 h-4" />Rejeter la declaration
                       </button>
                     </div>
@@ -1305,7 +1304,7 @@ export function Declarations() {
               )}
 
               {auth.userRole === "admin" && (selectedDeclaration.status === "validated" || selectedDeclaration.status === "rejected") && (
-                <div className={`mt-4 rounded-lg p-4 border ${selectedDeclaration.status === 'validated' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                <div className={`mt-4 rounded-lg p-3 sm:p-4 border ${selectedDeclaration.status === 'validated' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
                   <div className="flex items-center gap-2">
                     {selectedDeclaration.status === 'validated' ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <AlertTriangle className="w-5 h-5 text-red-600" />}
                     <span className="text-sm font-medium">
@@ -1321,16 +1320,16 @@ export function Declarations() {
 
       {/* CONTRACT DETAIL MODAL */}
       {showContractModal && contractDetails && (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => setShowContractModal(false)}>
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-3 sm:p-4" onClick={() => setShowContractModal(false)}>
           <div className="bg-white rounded-2xl max-w-2xl w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-[#0a2540]">Details du contrat</h3>
+            <div className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h3 className="text-base sm:text-lg font-bold text-[#0a2540]">Details du contrat</h3>
                 <button onClick={() => setShowContractModal(false)}><X className="w-5 h-5 text-gray-500" /></button>
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="bg-gray-50 rounded-lg p-3">
                     <p className="text-xs text-gray-500 mb-1">Reference</p>
                     <p className="text-sm font-semibold text-[#0a2540]">{contractDetails.reference}</p>
