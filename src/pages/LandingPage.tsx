@@ -52,76 +52,94 @@ export function LandingPage() {
     <div className="min-h-screen bg-[#0a2540]">
 
       {/* Hero */}
-      <section className="relative h-[600px] flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[500px] sm:min-h-[600px] flex flex-col justify-center overflow-hidden pb-32 sm:pb-0">
         <img src="/photo-fatshi-2.jpeg" alt="Kinshasa" className="absolute inset-0 w-full h-full object-cover object-top" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a2540]/80 via-[#0a2540]/60 to-[#0a2540]/90" />
 
         {/* Logo top left */}
-        <div className="absolute top-4 left-6 z-20 flex items-center gap-3">
-          <img src="/arsp_logo_enhanced_final.png" alt="ARSP" className="w-12 h-12 rounded-full object-cover border-2 border-white/30" />
+        <div className="absolute top-4 left-4 sm:left-6 z-20 flex items-center gap-2 sm:gap-3">
+          <img src="/arsp_logo_enhanced_final.png" alt="ARSP" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-white/30" />
           <div>
             <div className="text-white font-bold text-sm">ARSP</div>
             <div className="text-blue-200 text-[10px]">Portail Numerique</div>
           </div>
         </div>
 
-        <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
-            Une classe moyenne congolaise, c est possible
+        <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto pt-16 sm:pt-0">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4 leading-tight">
+            Une classe moyenne congolaise, c'est possible
           </h1>
-          <p className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-            Enregistrez votre entreprise de sous-traitance, accedez aux marches, et developpez votre activite avec l ARSP
+          <p className="text-base sm:text-lg md:text-xl text-white/90 mb-6 sm:mb-8 max-w-2xl mx-auto px-2">
+            Enregistrez votre entreprise de sous-traitance, accedez aux marches, et developpez votre activite avec l'ARSP
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col gap-3 justify-center max-w-xs sm:max-w-none mx-auto">
             {auth.isAuthenticated ? (
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
                   onClick={() => navigate('/dashboard')}
-                  className="px-8 py-3 bg-white text-[#0a2540] rounded-lg font-semibold hover:bg-white/90 transition-all shadow-lg flex items-center justify-center gap-2"
+                  className="px-6 sm:px-8 py-3 bg-white text-[#0a2540] rounded-lg font-semibold hover:bg-white/90 transition-all shadow-lg flex items-center justify-center gap-2"
                 >
                   Mon Portail
                   <ArrowRight className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => auth.logout()}
-                  className="px-8 py-3 bg-transparent border-2 border-white text-white rounded-lg font-semibold hover:bg-white/10 transition-all"
+                  className="px-6 sm:px-8 py-3 bg-transparent border-2 border-white text-white rounded-lg font-semibold hover:bg-white/10 transition-all"
                 >
                   Deconnexion
                 </button>
               </div>
             ) : (
-              <>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
                   onClick={() => navigate('/register')}
-                  className="px-8 py-3 bg-white text-[#0a2540] rounded-lg font-semibold hover:bg-white/90 transition-all shadow-lg flex items-center justify-center gap-2"
+                  className="px-6 sm:px-8 py-3 bg-white text-[#0a2540] rounded-lg font-semibold hover:bg-white/90 transition-all shadow-lg flex items-center justify-center gap-2"
                 >
-                  S enregistrer
+                  S'enregistrer
                   <ArrowRight className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setShowLogin(true)}
-                  className="px-8 py-3 bg-transparent border-2 border-white text-white rounded-lg font-semibold hover:bg-white/10 transition-all"
+                  className="px-6 sm:px-8 py-3 bg-transparent border-2 border-white text-white rounded-lg font-semibold hover:bg-white/10 transition-all"
                 >
                   Se connecter
                 </button>
-              </>
+              </div>
             )}
             <button
               onClick={() => navigate('/enterprise-search')}
-              className="px-8 py-3 bg-transparent border-2 border-white text-white rounded-lg font-semibold hover:bg-white/10 transition-all"
+              className="px-6 sm:px-8 py-3 bg-transparent border-2 border-white text-white rounded-lg font-semibold hover:bg-white/10 transition-all w-full sm:w-auto mx-auto"
             >
               Consulter le registre
             </button>
           </div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 glass-strip py-4 px-6">
-          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-around gap-4 text-center">
-            <div><div className="text-2xl font-bold text-[#0a2540]">5,000+</div><div className="text-sm text-gray-600">Entreprises enregistrees</div></div>
-            <div><div className="text-2xl font-bold text-[#0a2540]">12,000+</div><div className="text-sm text-gray-600">Contrats suivis</div></div>
-            <div><div className="text-2xl font-bold text-[#0a2540]">98%</div><div className="text-sm text-gray-600">Taux de conformite</div></div>
+      </section>
+
+      {/* Stats — separate section, not absolute */}
+      <section className="bg-white py-6 sm:py-4 px-4">
+        <div className="max-w-4xl mx-auto grid grid-cols-3 gap-2 sm:gap-4 text-center">
+          <div>
+            <div className="text-xl sm:text-2xl font-bold text-[#0a2540]">5,000+</div>
+            <div className="text-xs sm:text-sm text-gray-600">Entreprises</div>
+          </div>
+          <div>
+            <div className="text-xl sm:text-2xl font-bold text-[#0a2540]">12,000+</div>
+            <div className="text-xs sm:text-sm text-gray-600">Contrats</div>
+          </div>
+          <div>
+            <div className="text-xl sm:text-2xl font-bold text-[#0a2540]">98%</div>
+            <div className="text-xs sm:text-sm text-gray-600">Conformite</div>
           </div>
         </div>
       </section>
+        
+
+        
+          
+                 
+            
+        
 
       {/* Mission */}
       <section className="py-20 px-4 max-w-6xl mx-auto">
