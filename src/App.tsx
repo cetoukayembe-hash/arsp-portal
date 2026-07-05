@@ -44,7 +44,7 @@ function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-[#F6F9FC] flex">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'ml-[280px]' : 'ml-0'}`}>
+            <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'lg:ml-[280px]' : 'lg:ml-0'}`}>
         <Header />
         <main className="flex-1 p-6 overflow-auto">
           {children}
