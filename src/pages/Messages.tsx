@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Search, Plus, X, Circle, Paperclip, FileText, Download } from 'lucide-react';
+import { Send, Search, Plus, X, Circle, Paperclip, FileText, Download, ChevronLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/App';
 
@@ -16,6 +16,7 @@ export function Messages() {
   const [newConvEmail, setNewConvEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const subscriptionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -33,6 +34,7 @@ export function Messages() {
       fetchMessages(selectedConv);
       markConversationAsRead(selectedConv);
       subscribeToMessages(selectedConv);
+      setShowSidebar(false);
     }
     return () => {
       if (subscriptionRef.current) {
@@ -330,13 +332,13 @@ export function Messages() {
   const selectedConvData = conversations.find(c => c.id === selectedConv);
 
   return (
-    <div className="flex h-[calc(100vh-120px)] bg-white rounded-xl card-shadow overflow-hidden">
+    <div className="flex h-[calc(100vh-120px)] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
 
-      {/* Conversation List */}
-      <div className="w-80 border-r border-gray-200 flex flex-col shrink-0">
-        <div className="p-4 border-b border-gray-100">
+      {/* Conversation List — hidden on mobile when a conversation is selected */}
+      <div className={`${showSidebar ? 'flex' : 'hidden sm:flex'} w-full sm:w-80 border-r border-gray-200 flex-col shrink-0 absolute sm:relative z-10 bg-white h-full`}>
+        <div className="p-3 sm:p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-[#0a2540]">Messagerie</h2>
+            <h2 className="text-base sm:text-lg font-bold text-[#0a2540]">Messagerie</h2>
             <button
               onClick={() => setShowNew(true)}
               className="p-1.5 bg-[#007FFF] text-white rounded-lg hover:bg-[#0066CC]"
@@ -345,11 +347,11 @@ export function Messages() {
             </button>
           </div>
           <div className="flex items-center bg-[#F6F9FC] rounded-lg px-3 border border-gray-200">
-            <Search className="w-4 h-4 text-gray-400 mr-2" />
+            <Search className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
             <input
               type="text"
               placeholder="Rechercher..."
-              className="flex-1 bg-transparent py-2 text-sm outline-none"
+              className="flex-1 bg-transparent py-2 text-sm outline-none min-w-0"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -367,13 +369,13 @@ export function Messages() {
             <div
               key={conv.id}
               onClick={() => setSelectedConv(conv.id)}
-              className={`p-4 cursor-pointer border-b border-gray-50 hover:bg-gray-50 transition-colors ${selectedConv === conv.id ? 'bg-blue-50 border-l-4 border-l-[#007FFF]' : ''}`}
+              className={`p-3 sm:p-4 cursor-pointer border-b border-gray-50 hover:bg-gray-50 transition-colors ${selectedConv === conv.id ? 'bg-blue-50 border-l-4 border-l-[#007FFF]' : ''}`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#0a2540] text-white flex items-center justify-center text-sm font-bold shrink-0 relative">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#0a2540] text-white flex items-center justify-center text-xs sm:text-sm font-bold shrink-0 relative">
                   {conv.otherParticipant?.substring(0, 2).toUpperCase()}
                   {conv.unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-[9px] sm:text-[10px] rounded-full flex items-center justify-center font-bold">
                       {conv.unreadCount}
                     </span>
                   )}
@@ -399,25 +401,31 @@ export function Messages() {
       </div>
 
       {/* Message Thread */}
-      <div className="flex-1 flex flex-col">
+      <div className={`${!showSidebar ? 'flex' : 'hidden sm:flex'} flex-1 flex-col h-full`}>
         {selectedConvData ? (
           <>
-            <div className="p-4 border-b border-gray-200 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-[#0a2540] text-white flex items-center justify-center text-sm font-bold">
+            <div className="p-3 sm:p-4 border-b border-gray-200 flex items-center gap-3">
+              <button 
+                onClick={() => { setShowSidebar(true); setSelectedConv(null); }}
+                className="sm:hidden p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#0a2540] text-white flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">
                 {selectedConvData.otherParticipant?.substring(0, 2).toUpperCase()}
               </div>
-              <div>
-                <p className="font-semibold text-[#0a2540] text-sm">{selectedConvData.otherParticipant}</p>
+              <div className="min-w-0">
+                <p className="font-semibold text-[#0a2540] text-sm truncate">{selectedConvData.otherParticipant}</p>
                 <p className="text-xs text-emerald-500">En ligne</p>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#F6F9FC]">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 bg-[#F6F9FC]">
               {messages.length === 0 ? (
                 <div className="text-center text-gray-400 text-sm mt-8">Aucun message. Démarrez la conversation!</div>
               ) : messages.map((msg) => (
                 <div key={msg.id} className={`flex gap-2 ${msg.sender_email === currentUserEmail ? 'flex-row-reverse' : ''}`}>
-                  <div className={`max-w-sm px-3 py-2 rounded-xl text-sm shadow-sm ${
+                  <div className={`max-w-[75%] sm:max-w-sm px-3 py-2 rounded-xl text-sm shadow-sm ${
                     msg.sender_email === currentUserEmail
                       ? 'bg-[#007FFF] text-white rounded-tr-none'
                       : 'bg-white text-gray-800 rounded-tl-none'
@@ -432,7 +440,7 @@ export function Messages() {
                             target="_blank" 
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="p-1 rounded hover:bg-white/20"
+                            className="p-1 rounded hover:bg-white/20 shrink-0"
                           >
                             <Download className="w-4 h-4" />
                           </a>
@@ -442,7 +450,7 @@ export function Messages() {
                         )}
                       </div>
                     ) : (
-                      <p>{msg.content}</p>
+                      <p className="break-words">{msg.content}</p>
                     )}
                     <p className={`text-[10px] mt-1 ${msg.sender_email === currentUserEmail ? 'text-blue-100' : 'text-gray-400'}`}>
                       {new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
@@ -456,7 +464,7 @@ export function Messages() {
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-4 border-t border-gray-200 flex gap-2">
+            <div className="p-3 sm:p-4 border-t border-gray-200 flex gap-2">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -470,15 +478,15 @@ export function Messages() {
               <button 
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingFile}
-                className="p-2 text-gray-400 hover:text-[#007FFF] hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                className="p-2 text-gray-400 hover:text-[#007FFF] hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 shrink-0"
                 title="Joindre un fichier"
               >
                 <Paperclip className="w-5 h-5" />
               </button>
               <input
                 type="text"
-                placeholder={uploadingFile ? "Téléchargement en cours..." : "Écrire un message..."}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]"
+                placeholder={uploadingFile ? "Téléchargement..." : "Écrire un message..."}
+                className="flex-1 px-3 sm:px-4 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF] min-w-0"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
@@ -487,7 +495,7 @@ export function Messages() {
               <button 
                 onClick={() => handleSend()} 
                 disabled={uploadingFile || (!newMessage.trim() && !uploadingFile)}
-                className="p-2 bg-[#007FFF] text-white rounded-lg hover:bg-[#0066CC] disabled:opacity-50"
+                className="p-2 bg-[#007FFF] text-white rounded-lg hover:bg-[#0066CC] disabled:opacity-50 shrink-0"
               >
                 <Send className="w-5 h-5" />
               </button>
@@ -495,12 +503,12 @@ export function Messages() {
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                <Send className="w-8 h-8 text-gray-300" />
+            <div className="text-center px-4">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <Send className="w-6 h-6 sm:w-8 sm:h-8 text-gray-300" />
               </div>
-              <p className="text-gray-500 font-medium">Sélectionnez une conversation</p>
-              <p className="text-gray-400 text-sm mt-1">ou démarrez-en une nouvelle</p>
+              <p className="text-gray-500 font-medium text-sm sm:text-base">Sélectionnez une conversation</p>
+              <p className="text-gray-400 text-xs sm:text-sm mt-1">ou démarrez-en une nouvelle</p>
             </div>
           </div>
         )}
@@ -508,20 +516,20 @@ export function Messages() {
 
       {/* New Conversation Modal */}
       {showNew && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowNew(false)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-4" onClick={() => setShowNew(false)}>
+          <div className="bg-white rounded-2xl p-4 sm:p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-[#0a2540]">Nouvelle conversation</h3>
+              <h3 className="text-base sm:text-lg font-bold text-[#0a2540]">Nouvelle conversation</h3>
               <button onClick={() => setShowNew(false)}><X className="w-5 h-5 text-gray-500" /></button>
             </div>
 
             <div className="space-y-3">
               <div className="flex items-center bg-[#F6F9FC] rounded-lg px-3 border border-gray-200">
-                <Search className="w-4 h-4 text-gray-400 mr-2" />
+                <Search className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
                 <input
                   type="text"
                   placeholder="Rechercher un utilisateur..."
-                  className="flex-1 bg-transparent py-2 text-sm outline-none"
+                  className="flex-1 bg-transparent py-2 text-sm outline-none min-w-0"
                   value={userQuery}
                   onChange={(e) => setUserQuery(e.target.value)}
                 />
@@ -536,15 +544,15 @@ export function Messages() {
                     onClick={() => setNewConvEmail(user.email)}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${newConvEmail === user.email ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'}`}
                   >
-                    <div className="w-9 h-9 rounded-full bg-[#0a2540] text-white flex items-center justify-center text-sm font-bold shrink-0">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#0a2540] text-white flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">
                       {user.full_name?.substring(0, 2).toUpperCase() || user.email?.substring(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[#0a2540] truncate">{user.full_name || user.email}</p>
-                      <p className="text-xs text-gray-400">{user.email} • {user.role}</p>
+                      <p className="text-xs text-gray-400 truncate">{user.email} • {user.role}</p>
                     </div>
                     {newConvEmail === user.email && (
-                      <div className="w-4 h-4 rounded-full bg-[#007FFF] flex items-center justify-center">
+                      <div className="w-4 h-4 rounded-full bg-[#007FFF] flex items-center justify-center shrink-0">
                         <div className="w-2 h-2 bg-white rounded-full" />
                       </div>
                     )}
@@ -566,7 +574,7 @@ export function Messages() {
               <button 
                 onClick={handleNewConversation} 
                 disabled={!newConvEmail}
-                className="w-full py-2.5 bg-[#0a2540] text-white rounded-lg font-semibold hover:bg-[#0d2f4f] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-2.5 bg-[#0a2540] text-white rounded-lg font-semibold hover:bg-[#0d2f4f] disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 Démarrer la conversation
               </button>
