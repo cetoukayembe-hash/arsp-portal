@@ -62,15 +62,12 @@ export function Approvals() {
   }
 
   async function handleApproveUser(id: string) {
-    // Approve user account
     const { error: profileErr } = await supabase.from('user_profiles').update({ status: 'active' }).eq('id', id);
     if (profileErr) console.error('Profile update error:', profileErr);
     
-    // Approve linked enterprise
     const { error: entErr } = await supabase.from('enterprises').update({ status: 'active' }).eq('user_id', id);
     if (entErr) console.error('Enterprise update error:', entErr);
     
-    // Get enterprise data for digital ID
     const { data: enterprise } = await supabase
       .from('enterprises')
       .select('id, name, created_at')
@@ -78,17 +75,14 @@ export function Approvals() {
       .single();
     
     if (enterprise) {
-      // Generate ARSP ID: ARSP-YYYY-XXXXX
       const year = new Date().getFullYear();
       const randomSuffix = Math.floor(10000 + Math.random() * 90000);
       const arspId = `ARSP-${year}-${randomSuffix}`;
       
-      // Valid for 3 years
       const validFrom = new Date();
       const validUntil = new Date();
       validUntil.setFullYear(validUntil.getFullYear() + 3);
       
-      // Create digital ID
       await supabase.from('digital_ids').insert({
         user_id: id,
         enterprise_id: enterprise.id,
@@ -140,23 +134,25 @@ export function Approvals() {
   ];
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-[#0a2540]">Approbations</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-[#0a2540]">Approbations</h2>
           <p className="text-sm text-gray-500 mt-1">Gestion des comptes et entreprises en attente</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-1">
         <button
           onClick={() => setActiveTab('accounts')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'accounts' ? 'bg-[#0a2540] text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}
+          className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${activeTab === 'accounts' ? 'bg-[#0a2540] text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}
         >
           <div className="flex items-center gap-2">
             <UserCheck className="w-4 h-4" />
-            Comptes
+            <span className="hidden sm:inline">Comptes</span>
+            <span className="sm:hidden">Comptes</span>
             {pendingUsersCount > 0 && (
               <span className="bg-amber-500 text-white rounded-full px-2 py-0.5 text-xs">{pendingUsersCount}</span>
             )}
@@ -164,11 +160,12 @@ export function Approvals() {
         </button>
         <button
           onClick={() => setActiveTab('enterprises')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'enterprises' ? 'bg-[#0a2540] text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}
+          className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${activeTab === 'enterprises' ? 'bg-[#0a2540] text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}
         >
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4" />
-            Entreprises
+            <span className="hidden sm:inline">Entreprises</span>
+            <span className="sm:hidden">Ent.</span>
             {pendingEnterprisesCount > 0 && (
               <span className="bg-amber-500 text-white rounded-full px-2 py-0.5 text-xs">{pendingEnterprisesCount}</span>
             )}
@@ -181,43 +178,43 @@ export function Approvals() {
       ) : activeTab === 'accounts' ? (
         /* User Accounts List */
         userProfiles.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl card-shadow">
+          <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
             <UserCheck className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500 font-medium">Aucun compte en attente</p>
           </div>
         ) : (
           <div className="space-y-3">
             {userProfiles.map((user) => (
-              <div key={user.id} className="bg-white rounded-xl p-5 card-shadow">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className="w-12 h-12 rounded-xl bg-[#0a2540] text-white flex items-center justify-center text-lg font-bold shrink-0">
+              <div key={user.id} className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+                <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#0a2540] text-white flex items-center justify-center text-base sm:text-lg font-bold shrink-0">
                       {user.full_name?.substring(0, 2).toUpperCase() || user.email?.substring(0, 2).toUpperCase()}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-semibold text-[#0a2540]">{user.full_name || user.email}</h3>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-100 text-amber-700">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="text-base sm:text-lg font-semibold text-[#0a2540] truncate">{user.full_name || user.email}</h3>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-100 text-amber-700 shrink-0">
                           En attente
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500 mb-1">{user.email}</p>
+                      <p className="text-sm text-gray-500 mb-1 truncate">{user.email}</p>
                       <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                        <span>{user.company_name}</span>
+                        <span className="truncate">{user.company_name}</span>
                         <span>•</span>
                         <span className="capitalize">{user.role}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2 shrink-0">
-                    <button onClick={() => setSelectedItem(user)} className="flex items-center gap-1 px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-xs hover:bg-gray-50">
-                      <Eye className="w-3 h-3" />Voir
+                  <div className="flex gap-2 w-full sm:w-auto shrink-0">
+                    <button onClick={() => setSelectedItem(user)} className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 border border-gray-200 text-gray-600 rounded-lg text-xs hover:bg-gray-50">
+                      <Eye className="w-3 h-3" /><span className="hidden sm:inline">Voir</span>
                     </button>
-                    <button onClick={() => handleApproveUser(user.id)} className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs hover:bg-emerald-600">
-                      <CheckCircle2 className="w-3 h-3" />Approuver
+                    <button onClick={() => handleApproveUser(user.id)} className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 bg-emerald-500 text-white rounded-lg text-xs hover:bg-emerald-600">
+                      <CheckCircle2 className="w-3 h-3" /><span className="hidden sm:inline">Approuver</span>
                     </button>
-                    <button onClick={() => { setSelectedItem(user); setShowReject(true); }} className="flex items-center gap-1 px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600">
-                      <XCircle className="w-3 h-3" />Rejeter
+                    <button onClick={() => { setSelectedItem(user); setShowReject(true); }} className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600">
+                      <XCircle className="w-3 h-3" /><span className="hidden sm:inline">Rejeter</span>
                     </button>
                   </div>
                 </div>
@@ -228,38 +225,38 @@ export function Approvals() {
       ) : (
         /* Enterprises List */
         enterprises.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl card-shadow">
+          <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
             <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500 font-medium">Aucune entreprise en attente</p>
           </div>
         ) : (
           <div className="space-y-3">
             {enterprises.map((e) => (
-              <div key={e.id} className="bg-white rounded-xl p-5 card-shadow">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className="w-12 h-12 rounded-xl bg-[#0a2540] text-white flex items-center justify-center text-lg font-bold shrink-0">
+              <div key={e.id} className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100">
+                <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#0a2540] text-white flex items-center justify-center text-base sm:text-lg font-bold shrink-0">
                       {e.name?.substring(0, 2).toUpperCase()}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-semibold text-[#0a2540]">{e.name}</h3>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-100 text-amber-700">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="text-base sm:text-lg font-semibold text-[#0a2540] truncate">{e.name}</h3>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-100 text-amber-700 shrink-0">
                           En attente
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500 mb-1">{e.email}</p>
+                      <p className="text-sm text-gray-500 mb-1 truncate">{e.email}</p>
                     </div>
                   </div>
-                  <div className="flex gap-2 shrink-0">
-                    <button onClick={() => setSelectedItem(e)} className="flex items-center gap-1 px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-xs hover:bg-gray-50">
-                      <Eye className="w-3 h-3" />Voir
+                  <div className="flex gap-2 w-full sm:w-auto shrink-0">
+                    <button onClick={() => setSelectedItem(e)} className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 border border-gray-200 text-gray-600 rounded-lg text-xs hover:bg-gray-50">
+                      <Eye className="w-3 h-3" /><span className="hidden sm:inline">Voir</span>
                     </button>
-                    <button onClick={() => handleApproveEnterprise(e.id)} className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs hover:bg-emerald-600">
-                      <CheckCircle2 className="w-3 h-3" />Approuver
+                    <button onClick={() => handleApproveEnterprise(e.id)} className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 bg-emerald-500 text-white rounded-lg text-xs hover:bg-emerald-600">
+                      <CheckCircle2 className="w-3 h-3" /><span className="hidden sm:inline">Approuver</span>
                     </button>
-                    <button onClick={() => { setSelectedItem(e); setShowReject(true); }} className="flex items-center gap-1 px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600">
-                      <XCircle className="w-3 h-3" />Rejeter
+                    <button onClick={() => { setSelectedItem(e); setShowReject(true); }} className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600">
+                      <XCircle className="w-3 h-3" /><span className="hidden sm:inline">Rejeter</span>
                     </button>
                   </div>
                 </div>
@@ -273,14 +270,14 @@ export function Approvals() {
       {selectedItem && 'email' in selectedItem && !showReject && activeTab === 'accounts' && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedItem(null)}>
           <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-[#0a2540]">{(selectedItem as UserProfile).full_name || (selectedItem as UserProfile).email}</h3>
+                <h3 className="text-base sm:text-lg font-bold text-[#0a2540] truncate pr-4">{(selectedItem as UserProfile).full_name || (selectedItem as UserProfile).email}</h3>
                 <button onClick={() => setSelectedItem(null)}><X className="w-5 h-5 text-gray-500" /></button>
               </div>
               <div className="space-y-3">
-                <div className="bg-[#F6F9FC] rounded-lg p-4 grid grid-cols-2 gap-3 text-sm">
-                  <div><span className="text-gray-500">Email</span><p className="font-medium text-[#0a2540]">{(selectedItem as UserProfile).email}</p></div>
+                <div className="bg-[#F6F9FC] rounded-lg p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div><span className="text-gray-500">Email</span><p className="font-medium text-[#0a2540] break-all">{(selectedItem as UserProfile).email}</p></div>
                   <div><span className="text-gray-500">Entreprise</span><p className="font-medium text-[#0a2540]">{(selectedItem as UserProfile).company_name || 'N/A'}</p></div>
                   <div><span className="text-gray-500">Role</span><p className="font-medium text-[#0a2540] capitalize">{(selectedItem as UserProfile).role}</p></div>
                   <div><span className="text-gray-500">Date</span><p className="font-medium text-[#0a2540]">{new Date((selectedItem as UserProfile).created_at).toLocaleDateString('fr-FR')}</p></div>
@@ -288,7 +285,7 @@ export function Approvals() {
 
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-2">Documents soumis</p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {docLinks.map((doc) => {
                       const url = (selectedItem as any)[doc.key] || '';
                       return url ? (
@@ -304,7 +301,7 @@ export function Approvals() {
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <button onClick={() => handleApproveUser((selectedItem as UserProfile).id)} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2">
                     <CheckCircle2 className="w-4 h-4" />Approuver
                   </button>
@@ -322,9 +319,9 @@ export function Approvals() {
       {showReject && selectedItem && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowReject(false)}>
           <div className="bg-white rounded-2xl max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-[#0a2540]">Rejeter la demande</h3>
+                <h3 className="text-base sm:text-lg font-bold text-[#0a2540]">Rejeter la demande</h3>
                 <button onClick={() => setShowReject(false)}><X className="w-5 h-5 text-gray-500" /></button>
               </div>
               <div className="space-y-4">
