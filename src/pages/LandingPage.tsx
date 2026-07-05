@@ -211,7 +211,7 @@ export function LandingPage() {
             <p className="text-blue-200 leading-relaxed italic">
               Notre mission est de structurer et de professionnaliser le secteur de la sous-traitance en Republique Democratique du Congo, en offrant aux entreprises congolaises les outils necessaires pour acceder aux marches et contribuer au developpement economique de notre pays.
             </p>
-            <p className="text-white font-semibold mt-4">Miguel Kashal Katemb, Directeur General de l ARSP</p>
+            <p className="text-white font-semibold mt-4">Beleshayi Kasanda Juan Ted, Directeur General de l'ARSP</p>
           </div>
         </div>
       </section>
@@ -225,7 +225,7 @@ export function LandingPage() {
             onClick={() => { if (auth.isAuthenticated) { navigate('/dashboard'); } else { navigate('/register'); } }}
             className="px-8 py-3 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC] transition-all shadow-lg"
           >
-            Commencer l enregistrement
+            Commencer l'enregistrement
           </button>
         </div>
       </section>
