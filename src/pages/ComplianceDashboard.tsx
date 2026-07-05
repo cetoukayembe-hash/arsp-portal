@@ -583,7 +583,7 @@ export function ComplianceDashboard() {
      ═══════════════════════════════════════════════════════════════ */
   if (isAdmin) {
     return (
-      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
         {/* Toast */}
         {toast && (
           <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white ${toast.type === "error" ? "bg-red-600" : "bg-green-600"}`}>
@@ -614,7 +614,7 @@ export function ComplianceDashboard() {
               <span className="text-sm text-gray-500 font-medium">Entreprises inscrites</span>
               <Building2 className="w-5 h-5 text-blue-500" />
             </div>
-            <div className="text-4xl font-bold text-gray-900">{totalEnterprises}</div>
+            <div className="text-3xl sm:text-4xl font-bold text-gray-900">{totalEnterprises}</div>
             <p className="text-xs text-gray-500 mt-2">{primeCount} primes, {subCount} sous-traitants</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
@@ -622,7 +622,7 @@ export function ComplianceDashboard() {
               <span className="text-sm text-gray-500 font-medium">Certifies ARSP</span>
               <ShieldCheck className="w-5 h-5 text-emerald-500" />
             </div>
-            <div className="text-4xl font-bold text-emerald-600">{registeredArspCount}</div>
+            <div className="text-3xl sm:text-4xl font-bold text-emerald-600">{registeredArspCount}</div>
             <p className="text-xs text-gray-500 mt-2">{globalComplianceScore}% du total</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
@@ -630,7 +630,7 @@ export function ComplianceDashboard() {
               <span className="text-sm text-gray-500 font-medium">Documents expires</span>
               <XCircle className="w-5 h-5 text-red-500" />
             </div>
-            <div className="text-4xl font-bold text-red-600">{expiredDocs}</div>
+            <div className="text-3xl sm:text-4xl font-bold text-red-600">{expiredDocs}</div>
             <p className="text-xs text-gray-500 mt-2">Sur {totalDocs} documents au total</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
@@ -638,7 +638,7 @@ export function ComplianceDashboard() {
               <span className="text-sm text-gray-500 font-medium">Obligations en attente</span>
               <FileCheck className="w-5 h-5 text-amber-500" />
             </div>
-            <div className="text-4xl font-bold text-amber-600">{obligations.filter(o => !o.done).length}</div>
+            <div className="text-3xl sm:text-4xl font-bold text-amber-600">{obligations.filter(o => !o.done).length}</div>
             <p className="text-xs text-gray-500 mt-2">{obligationProgress}% accompli au global</p>
           </div>
         </div>
@@ -731,7 +731,7 @@ export function ComplianceDashboard() {
             </div>
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[640px]">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Entreprise</th>
@@ -800,7 +800,7 @@ export function ComplianceDashboard() {
           <div className="space-y-4">
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[640px]">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Document</th>
@@ -850,7 +850,7 @@ export function ComplianceDashboard() {
           <div className="space-y-4">
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[640px]">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Titre</th>
@@ -948,7 +948,7 @@ export function ComplianceDashboard() {
      RENDER: PRIME & SUBCONTRACTOR SHARED VIEW
      ═══════════════════════════════════════════════════════════════ */
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* Toast */}
       {toast && (
         <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white ${toast.type === "error" ? "bg-red-600" : "bg-green-600"}`}>
@@ -998,7 +998,7 @@ export function ComplianceDashboard() {
             <span className="text-sm text-gray-500 font-medium">Score de conformite</span>
             <ShieldCheck className="w-5 h-5 text-blue-500" />
           </div>
-          <div className={`text-4xl font-bold ${getScoreColor(complianceScore)}`}>{complianceScore}%</div>
+          <div className={`text-3xl sm:text-4xl font-bold ${getScoreColor(complianceScore)}`}>{complianceScore}%</div>
           <div className="mt-3">
             <div className="w-full bg-gray-100 rounded-full h-2.5">
               <div className={`h-2.5 rounded-full ${getScoreBg(complianceScore)} transition-all duration-500`} style={{ width: `${complianceScore}%` }} />
@@ -1039,7 +1039,7 @@ export function ComplianceDashboard() {
             <span className="text-sm text-gray-500 font-medium">Obligations legales</span>
             <FileCheck className="w-5 h-5 text-blue-500" />
           </div>
-          <div className="text-4xl font-bold text-gray-900">{doneObligations}/{totalObligations}</div>
+          <div className="text-3xl sm:text-4xl font-bold text-gray-900">{doneObligations}/{totalObligations}</div>
           <div className="mt-3">
             <div className="w-full bg-gray-100 rounded-full h-2.5">
               <div className="h-2.5 rounded-full bg-blue-500 transition-all duration-500" style={{ width: `${obligationProgress}%` }} />
@@ -1126,7 +1126,7 @@ export function ComplianceDashboard() {
           ) : (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[640px]">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Document</th>
@@ -1466,11 +1466,11 @@ export function ComplianceDashboard() {
       {showUploadModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-100">
               <h2 className="text-xl font-bold text-gray-900">Telecharger un document</h2>
               <button onClick={() => setShowUploadModal(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
             </div>
-            <form onSubmit={handleUploadDocument} className="p-6 space-y-5">
+            <form onSubmit={handleUploadDocument} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Type de document <span className="text-red-500">*</span></label>
                 <select value={uploadDocType} onChange={e => setUploadDocType(e.target.value)}
@@ -1517,11 +1517,11 @@ export function ComplianceDashboard() {
       {showAddObligation && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-100">
               <h2 className="text-xl font-bold text-gray-900">Nouvelle obligation</h2>
               <button onClick={() => setShowAddObligation(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
             </div>
-            <form onSubmit={handleAddObligation} className="p-6 space-y-5">
+            <form onSubmit={handleAddObligation} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Titre <span className="text-red-500">*</span></label>
                 <input type="text" value={newObligation.title} onChange={e => setNewObligation({ ...newObligation, title: e.target.value })}
@@ -1577,11 +1577,11 @@ export function ComplianceDashboard() {
       {showAddSub && isPrime && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-100">
               <h2 className="text-xl font-bold text-gray-900">Ajouter un sous-traitant</h2>
               <button onClick={() => setShowAddSub(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
             </div>
-            <form onSubmit={handleAddSubcontractor} className="p-6 space-y-5">
+            <form onSubmit={handleAddSubcontractor} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom du sous-traitant <span className="text-red-500">*</span></label>
                 <input type="text" value={newSub.name} onChange={e => setNewSub({ ...newSub, name: e.target.value })}
@@ -1632,11 +1632,11 @@ export function ComplianceDashboard() {
       {showEditProfile && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-100">
               <h2 className="text-xl font-bold text-gray-900">{enterprise ? "Modifier le profil" : "Creer le profil"}</h2>
               <button onClick={() => setShowEditProfile(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
             </div>
-            <form onSubmit={handleSaveProfile} className="p-6 space-y-5">
+            <form onSubmit={handleSaveProfile} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom de l'entreprise</label>
                 <input type="text" value={editProfile.name || ""} onChange={e => setEditProfile({ ...editProfile, name: e.target.value })}
