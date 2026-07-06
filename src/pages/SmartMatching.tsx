@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Zap, MapPin, Briefcase, Star, ChevronRight, X, Building2, DollarSign, Calendar, FileText } from 'lucide-react';
+import { Zap, MapPin, Briefcase, Star, ChevronRight, X, DollarSign, Calendar } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/App';
 
@@ -8,7 +8,6 @@ interface UserProfile {
   sector?: string;
   province?: string;
   city?: string;
-  congolese_capital?: number;
 }
 
 interface MatchBreakdown {
@@ -26,6 +25,8 @@ export function SmartMatching() {
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [selectedBreakdown, setSelectedBreakdown] = useState<MatchBreakdown | null>(null);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({ sector: '', province: '', city: '' });
 
   useEffect(() => {
     fetchData();
@@ -34,7 +35,6 @@ export function SmartMatching() {
   async function fetchData() {
     setLoading(true);
     try {
-      // User profile comes from auth context (already loaded in App.tsx)
       const profile: UserProfile = {
         id: auth.userId,
         sector: auth.userSector,
@@ -43,7 +43,6 @@ export function SmartMatching() {
       };
       setUserProfile(profile);
 
-      // Fetch enterprises and tenders
       const { data: ent, error: entError } = await supabase.from('enterprises').select('*');
       const { data: ten, error: tenError } = await supabase.from('tenders').select('*');
 
@@ -59,6 +58,22 @@ export function SmartMatching() {
     }
   }
 
+  async function saveProfile() {
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({
+        sector: profileForm.sector,
+        province: profileForm.province,
+        city: profileForm.city
+      })
+      .eq('id', auth.userId);
+    
+    if (!error) {
+      setUserProfile({ ...userProfile, ...profileForm } as UserProfile);
+      setEditingProfile(false);
+    }
+  }
+
   function calculateMatchScore(
     item: any,
     profile: UserProfile | null,
@@ -71,26 +86,21 @@ export function SmartMatching() {
     let score = 0;
     const breakdown: MatchBreakdown = { sector: false, province: false, city: false, capital: false };
 
-    // Sector match (highest weight)
     if (item.sector && profile.sector && item.sector.toLowerCase() === profile.sector.toLowerCase()) {
       score += 40;
       breakdown.sector = true;
     }
 
-    // Province match
     if (item.province && profile.province && item.province.toLowerCase() === profile.province.toLowerCase()) {
       score += 30;
       breakdown.province = true;
     }
 
-    // City match (only for enterprises matching to tenders, or if both have city)
     if (item.city && profile.city && item.city.toLowerCase() === profile.city.toLowerCase()) {
       score += 15;
       breakdown.city = true;
     }
 
-    // Congolese capital — only relevant when PRIME is looking at ENTERPRISES
-    // (subcontractors don't have congolese_capital in their profile for tender matching)
     if (role === 'prime' && item.congolese_capital && item.congolese_capital >= 51) {
       score += 15;
       breakdown.capital = true;
@@ -124,12 +134,10 @@ export function SmartMatching() {
   };
 
   const handleApply = (tenderId: string) => {
-    // Navigate to tender detail or open application modal
     window.location.href = `/tenders?id=${tenderId}&action=postuler`;
   };
 
   const handleViewProfile = (enterpriseId: string) => {
-    // Navigate to enterprise profile
     window.location.href = `/enterprise-search?id=${enterpriseId}`;
   };
 
@@ -142,21 +150,71 @@ export function SmartMatching() {
     );
   }
 
-  // No profile warning
   if (!loading && !userProfile?.sector) {
     return (
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
-        <Briefcase className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-        <h3 className="text-lg font-semibold text-amber-800 mb-2">Profil incomplet</h3>
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Briefcase className="w-6 h-6 text-amber-500" />
+          <h3 className="text-lg font-semibold text-amber-800">Profil incomplet</h3>
+        </div>
         <p className="text-amber-700 text-sm mb-4">
-          Veuillez compléter votre profil (secteur, province, ville) pour bénéficier du matching intelligent.
+          Veuillez completer votre profil pour beneficier du matching intelligent.
         </p>
-        <a
-          href="/profil"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium"
-        >
-          Compléter mon profil
-        </a>
+        {!editingProfile ? (
+          <button
+            onClick={() => setEditingProfile(true)}
+            className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium"
+          >
+            Completer mon profil
+          </button>
+        ) : (
+          <div className="space-y-3 bg-white rounded-lg p-4 border border-amber-200">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Secteur d&apos;activite</label>
+              <input
+                type="text"
+                value={profileForm.sector}
+                onChange={(e) => setProfileForm({...profileForm, sector: e.target.value})}
+                placeholder="Ex: Construction, Technologie, Mines..."
+                className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Province</label>
+              <input
+                type="text"
+                value={profileForm.province}
+                onChange={(e) => setProfileForm({...profileForm, province: e.target.value})}
+                placeholder="Ex: Kinshasa, Haut-Katanga..."
+                className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
+              <input
+                type="text"
+                value={profileForm.city}
+                onChange={(e) => setProfileForm({...profileForm, city: e.target.value})}
+                placeholder="Ex: Gombe, Lubumbashi..."
+                className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={saveProfile}
+                className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-sm font-medium"
+              >
+                Enregistrer
+              </button>
+              <button
+                onClick={() => setEditingProfile(false)}
+                className="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50 text-sm"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -171,21 +229,20 @@ export function SmartMatching() {
           <h2 className="text-2xl font-bold text-[#0a2540]">Matching Intelligent</h2>
           <p className="text-sm text-gray-500">
             {auth.userRole === 'subcontractor'
-              ? "Appels d'offres correspondant à votre profil"
-              : 'Entreprises correspondant à vos besoins'}
+              ? "Appels d'offres correspondant a votre profil"
+              : 'Entreprises correspondant a vos besoins'}
           </p>
         </div>
       </div>
 
-      {/* Profile summary */}
       <div className="bg-white border rounded-xl p-4 mb-6 flex flex-wrap gap-3 text-sm">
         <span className="px-3 py-1 bg-gray-100 rounded-full text-gray-700">
           <Briefcase className="w-3 h-3 inline mr-1" />
-          {userProfile?.sector || 'Non défini'}
+          {userProfile?.sector || 'Non defini'}
         </span>
         <span className="px-3 py-1 bg-gray-100 rounded-full text-gray-700">
           <MapPin className="w-3 h-3 inline mr-1" />
-          {userProfile?.province || 'Non défini'}
+          {userProfile?.province || 'Non defini'}
         </span>
         {userProfile?.city && (
           <span className="px-3 py-1 bg-gray-100 rounded-full text-gray-700">
@@ -285,14 +342,14 @@ export function SmartMatching() {
           <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 mb-6 flex items-center gap-3">
             <Zap className="w-5 h-5 text-violet-600 shrink-0" />
             <p className="text-sm text-violet-700">
-              Notre algorithme identifie les entreprises de sous-traitance les plus compatibles avec vos besoins selon le secteur, la province et la capacité financière.
+              Notre algorithme identifie les entreprises de sous-traitance les plus compatibles avec vos besoins selon le secteur, la province et la capacite financiere.
             </p>
           </div>
 
           {enterprises.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl card-shadow">
               <Star className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">Aucune entreprise enregistrée pour le moment</p>
+              <p className="text-gray-500">Aucune entreprise enregistree pour le moment</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -369,7 +426,6 @@ export function SmartMatching() {
         </div>
       )}
 
-      {/* Detail Modal */}
       {selectedItem && selectedBreakdown && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-4" onClick={() => setSelectedItem(null)}>
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -382,17 +438,16 @@ export function SmartMatching() {
               </button>
             </div>
             <div className="p-5 space-y-4">
-              {/* Score breakdown */}
               <div className="bg-gray-50 rounded-xl p-4">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Détail du score</h4>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Detail du score</h4>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2">
                       <Briefcase className="w-4 h-4 text-gray-400" />
-                      Secteur d'activité
+                      Secteur d'activite
                     </span>
                     <span className={selectedBreakdown.sector ? 'text-emerald-600 font-medium' : 'text-gray-400'}>
-                      {selectedBreakdown.sector ? '✓ Correspond (+40%)' : '—'}
+                      {selectedBreakdown.sector ? 'Correspond (+40%)' : '—'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
@@ -401,7 +456,7 @@ export function SmartMatching() {
                       Province
                     </span>
                     <span className={selectedBreakdown.province ? 'text-emerald-600 font-medium' : 'text-gray-400'}>
-                      {selectedBreakdown.province ? '✓ Correspond (+30%)' : '—'}
+                      {selectedBreakdown.province ? 'Correspond (+30%)' : '—'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
@@ -410,24 +465,23 @@ export function SmartMatching() {
                       Ville
                     </span>
                     <span className={selectedBreakdown.city ? 'text-emerald-600 font-medium' : 'text-gray-400'}>
-                      {selectedBreakdown.city ? '✓ Correspond (+15%)' : '—'}
+                      {selectedBreakdown.city ? 'Correspond (+15%)' : '—'}
                     </span>
                   </div>
                   {auth.userRole === 'prime' && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="flex items-center gap-2">
                         <DollarSign className="w-4 h-4 text-gray-400" />
-                        Capital congolais ≥ 51%
+                        Capital congolais >= 51%
                       </span>
                       <span className={selectedBreakdown.capital ? 'text-emerald-600 font-medium' : 'text-gray-400'}>
-                        {selectedBreakdown.capital ? '✓ Correspond (+15%)' : '—'}
+                        {selectedBreakdown.capital ? 'Correspond (+15%)' : '—'}
                       </span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Item details */}
               {selectedItem.description && (
                 <div>
                   <h4 className="text-sm font-semibold text-gray-700 mb-1">Description</h4>
@@ -447,7 +501,6 @@ export function SmartMatching() {
                 </div>
               )}
 
-              {/* Action buttons */}
               <div className="pt-3 flex gap-3">
                 {auth.userRole === 'subcontractor' ? (
                   <button
