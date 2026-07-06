@@ -183,7 +183,7 @@ function getSubStatusConfig(status: string) {
 function getRoleBadge(role: string) {
   switch (role) {
     case "admin": return { icon: Crown, color: "text-purple-600", bg: "bg-purple-50", label: "Admin" };
-    case "prime": return { icon: Building2, color: "text-blue-600", bg: "bg-blue-50", label: "Prime" };
+    case "prime": return { icon: Building2, color: "text-blue-600", bg: "bg-blue-50", label: "Entreprise donneuse d'ordre" };
     default: return { icon: User, color: "text-gray-600", bg: "bg-gray-50", label: "Sous-traitant" };
   }
 }

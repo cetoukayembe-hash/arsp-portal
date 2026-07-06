@@ -117,7 +117,7 @@ export function Header() {
             )}
           </button>
           {notifOpen && (
-            <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
+                        <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
               <div className="p-3 border-b border-gray-100 flex items-center justify-between">
                 <span className="font-semibold text-sm text-[#0a2540]">Notifications ({unreadCount})</span>
                 <button onClick={() => setNotifOpen(false)} className="p-1 hover:bg-gray-100 rounded">
@@ -158,7 +158,7 @@ export function Header() {
               <ChevronDown className="w-4 h-4 text-gray-500 hidden sm:block" />
             </button>
             {profileOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
+              <div className="absolute right-0 top-full mt-2 w-48 sm:w-56 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
                 <div className="p-3 border-b border-gray-100">
                   <p className="font-medium text-sm text-[#0a2540] truncate">{auth.userEmail}</p>
                   <p className="text-xs text-gray-500 capitalize">{auth.userRole}</p>

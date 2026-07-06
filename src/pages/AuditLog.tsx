@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import {
   ShieldCheck, Search, Download, Clock, User,
   FileText, Building2, CheckCircle2, XCircle,
-  ChevronDown, ChevronUp, Loader2
+  ChevronDown, ChevronUp, Loader2, Filter
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
@@ -62,6 +62,7 @@ export function AuditLog() {
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     fetchLogs();
@@ -128,33 +129,41 @@ export function AuditLog() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
             <ShieldCheck className="text-blue-600" /> Journal d'audit
           </h1>
-          <p className="text-gray-500 mt-1">Tracabilite complete des actions — point anti-corruption</p>
+          <p className="text-sm text-gray-500 mt-1">Tracabilite complete des actions</p>
         </div>
         <button onClick={exportToCSV}
-          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium transition-colors">
-          <Download size={16} /> Exporter CSV
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium transition-colors">
+          <Download size={16} /> <span className="hidden sm:inline">Exporter CSV</span>
+          <span className="sm:hidden">Export</span>
         </button>
       </div>
 
+      {/* Mobile filter toggle */}
+      <button 
+        onClick={() => setShowFilters(!showFilters)}
+        className="sm:hidden flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600">
+        <Filter size={16} /> Filtres {showFilters ? '▲' : '▼'}
+      </button>
+
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[200px]">
+      <div className={`bg-white rounded-xl border border-gray-100 shadow-sm p-4 ${showFilters ? 'block' : 'hidden sm:block'}`}>
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-            <input type="text" placeholder="Rechercher par email, table ou ID..."
+            <input type="text" placeholder="Rechercher..."
               value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
           </div>
           <select value={filterAction} onChange={e => { setFilterAction(e.target.value); fetchLogs(); }}
             className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-            <option value="all">Toutes les actions</option>
+            <option value="all">Toutes actions</option>
             <option value="CREATE">Creation</option>
             <option value="UPDATE">Modification</option>
             <option value="DELETE">Suppression</option>
@@ -166,7 +175,7 @@ export function AuditLog() {
           </select>
           <select value={filterTable} onChange={e => { setFilterTable(e.target.value); fetchLogs(); }}
             className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-            <option value="all">Toutes les tables</option>
+            <option value="all">Toutes tables</option>
             <option value="enterprises">Entreprises</option>
             <option value="compliance_documents">Documents</option>
             <option value="compliance_obligations">Obligations</option>
@@ -174,10 +183,10 @@ export function AuditLog() {
             <option value="tenders">Appels d'offres</option>
             <option value="users">Utilisateurs</option>
           </select>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
               className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm" />
-            <span className="text-gray-400">→</span>
+            <span className="hidden sm:inline text-gray-400">→</span>
             <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
               className="px-3 py-2.5 border border-gray-200 rounded-lg text-sm" />
             <button onClick={fetchLogs}
@@ -189,16 +198,16 @@ export function AuditLog() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { label: "Total actions", value: logs.length, color: "text-blue-600" },
+          { label: "Total", value: logs.length, color: "text-blue-600" },
           { label: "Creations", value: logs.filter(l => l.action === "CREATE").length, color: "text-emerald-600" },
           { label: "Modifications", value: logs.filter(l => l.action === "UPDATE").length, color: "text-blue-600" },
           { label: "Suppressions", value: logs.filter(l => l.action === "DELETE").length, color: "text-red-600" },
         ].map(stat => (
-          <div key={stat.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+          <div key={stat.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 sm:p-4">
             <p className="text-xs text-gray-500 uppercase font-medium">{stat.label}</p>
-            <p className={`text-2xl font-bold ${stat.color} mt-1`}>{stat.value}</p>
+            <p className={`text-xl sm:text-2xl font-bold ${stat.color} mt-1`}>{stat.value}</p>
           </div>
         ))}
       </div>
@@ -206,15 +215,15 @@ export function AuditLog() {
       {/* Logs Table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Date</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Action</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Table</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Target ID</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Utilisateur</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Success</th>
+                <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Date</th>
+                <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Action</th>
+                <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Table</th>
+                <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">Target ID</th>
+                <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Utilisateur</th>
+                <th className="text-left px-3 sm:px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Success</th>
                 <th className="w-10"></th>
               </tr>
             </thead>
@@ -229,40 +238,40 @@ export function AuditLog() {
                   <>
                     <tr key={log.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer"
                       onClick={() => setExpandedLog(isExpanded ? null : log.id)}>
-                      <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                      <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
-                          <Clock size={14} className="text-gray-400" />
-                          {format(parseISO(log.created_at), "dd/MM/yyyy HH:mm")}
+                          <Clock size={12} className="text-gray-400 hidden sm:inline" />
+                          {format(parseISO(log.created_at), "dd/MM/yy HH:mm")}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${acfg.bg} ${acfg.color} ${acfg.border} border`}>
-                          <ActionIcon size={12} /> {acfg.label}
+                      <td className="px-3 sm:px-4 py-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${acfg.bg} ${acfg.color} ${acfg.border} border`}>
+                          <ActionIcon size={10} className="hidden sm:inline" /> {acfg.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="flex items-center gap-1.5 text-sm text-gray-600">
-                          <TableIcon size={14} className="text-gray-400" />
-                          {log.target_table || "—"}
+                      <td className="px-3 sm:px-4 py-3">
+                        <span className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-600">
+                          <TableIcon size={12} className="text-gray-400 hidden sm:inline" />
+                          <span className="truncate max-w-[80px] sm:max-w-none">{log.target_table || "—"}</span>
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm font-mono text-gray-500">{log.target_id ? log.target_id.slice(0, 8) + "..." : "—"}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{log.user_email || "—"}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${log.success ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
+                      <td className="px-3 sm:px-4 py-3 text-xs font-mono text-gray-500 hidden sm:table-cell">{log.target_id ? log.target_id.slice(0, 8) + "..." : "—"}</td>
+                      <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600 truncate max-w-[100px] sm:max-w-none">{log.user_email || "—"}</td>
+                      <td className="px-3 sm:px-4 py-3">
+                        <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${log.success ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
                           {log.success ? "Oui" : "Non"}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                      <td className="px-3 sm:px-4 py-3">
+                        {isExpanded ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
                       </td>
                     </tr>
                     {isExpanded && log.details && (
                       <tr>
-                        <td colSpan={7} className="px-4 py-4 bg-gray-50/50">
+                        <td colSpan={7} className="px-3 sm:px-4 py-3 sm:py-4 bg-gray-50/50">
                           <div className="space-y-2">
                             <p className="text-xs text-gray-500 font-medium uppercase">Details</p>
-                            <pre className="bg-white p-3 rounded-lg border border-gray-200 text-xs text-gray-700 overflow-x-auto">
+                            <pre className="bg-white p-2 sm:p-3 rounded-lg border border-gray-200 text-xs text-gray-700 overflow-x-auto">
                               {JSON.stringify(log.details, null, 2)}
                             </pre>
                           </div>
@@ -276,10 +285,10 @@ export function AuditLog() {
           </table>
         </div>
         {filteredLogs.length === 0 && (
-          <div className="text-center py-16">
-            <ShieldCheck className="mx-auto text-gray-300 mb-4" size={48} />
-            <p className="text-gray-500">Aucun log trouve</p>
-            <p className="text-gray-400 text-sm mt-1">Les actions enregistrees apparaitront ici</p>
+          <div className="text-center py-12 sm:py-16">
+            <ShieldCheck className="mx-auto text-gray-300 mb-4" size={40} />
+            <p className="text-gray-500 text-sm">Aucun log trouve</p>
+            <p className="text-gray-400 text-xs mt-1">Les actions enregistrees apparaitront ici</p>
           </div>
         )}
       </div>
