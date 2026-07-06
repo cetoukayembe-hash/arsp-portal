@@ -67,7 +67,7 @@ export function Dashboard() {
           <h2 className="text-2xl font-bold text-white mb-1">{greeting()}, bienvenue sur le portail ARSP</h2>
           <p className="text-blue-200 text-sm">{auth.userEmail}</p>
           <span className={"mt-2 inline-block px-3 py-1 rounded-full text-xs font-bold " + (auth.userRole === "admin" ? "bg-amber-500 text-white" : auth.userRole === "prime" ? "bg-blue-500 text-white" : "bg-emerald-500 text-white")}>
-            {auth.userRole === "admin" ? "Administrateur ARSP" : auth.userRole === "prime" ? "Entreprise Donneuse d Ordres" : "Entreprise de Sous-traitance"}
+            {auth.userRole === "admin" ? "Administrateur ARSP" : auth.userRole === "prime" ? "Entreprise Donneuse d'Ordres" : "Entreprise de Sous-traitance"}
           </span>
         </div>
         <img src="/arsp_logo_enhanced_final.png" alt="ARSP" className="w-16 h-16 rounded-full object-cover border-2 border-white/30 shrink-0" />
