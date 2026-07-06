@@ -268,7 +268,11 @@ export function SmartMatching() {
             </div>
           ) : (
             <div className="space-y-4">
-              {tenders.map((tender) => {
+              {tenders.sort((a, b) => {
+                const scoreA = calculateMatchScore(a, userProfile, 'subcontractor').score;
+                const scoreB = calculateMatchScore(b, userProfile, 'subcontractor').score;
+                return scoreB - scoreA;
+              }).map((tender) => {
                 const { score, breakdown } = calculateMatchScore(tender, userProfile, 'subcontractor');
                 return (
                   <div
@@ -353,7 +357,11 @@ export function SmartMatching() {
             </div>
           ) : (
             <div className="space-y-4">
-              {enterprises.map((enterprise) => {
+              {enterprises.sort((a, b) => {
+                const scoreA = calculateMatchScore(a, userProfile, 'prime').score;
+                const scoreB = calculateMatchScore(b, userProfile, 'prime').score;
+                return scoreB - scoreA;
+              }).map((enterprise) => {
                 const { score, breakdown } = calculateMatchScore(enterprise, userProfile, 'prime');
                 return (
                   <div
