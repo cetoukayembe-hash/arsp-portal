@@ -238,6 +238,16 @@ export default function App() {
     setUserStatus('pending');
   };
 
+  // Register service worker for PWA
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch((err) => {
+        console.error("Service Worker registration failed:", err);
+      });
+    }
+  }, []);
+
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F6F9FC] flex items-center justify-center">

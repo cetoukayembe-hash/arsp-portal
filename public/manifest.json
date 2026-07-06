@@ -1,0 +1,22 @@
+{
+  "name": "ARSP Portail Numerique",
+  "short_name": "ARSP",
+  "description": "Portail de regulation de la sous-traitance en RDC",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a2540",
+  "theme_color": "#0a2540",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/arsp_logo_enhanced_final.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/arsp_logo_enhanced_final.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
