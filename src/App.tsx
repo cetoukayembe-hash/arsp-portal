@@ -23,6 +23,9 @@ import { VerifyCard } from './pages/VerifyCard';
 import { AuditLog } from './pages/AuditLog';
 
 export interface AuthContextType {
+  userSector?: string;
+  userProvince?: string;
+  userCity?: string;
   isAuthenticated: boolean;
   userRole: 'subcontractor' | 'prime' | 'admin';
   userStatus: 'pending' | 'active' | 'rejected' | 'suspended';
@@ -160,12 +163,15 @@ export default function App() {
   const [userStatus, setUserStatus] = useState<'pending' | 'active' | 'rejected' | 'suspended'>('pending');
   const [userEmail, setUserEmail] = useState('');
   const [userId, setUserId] = useState('');
+  const [userSector, setUserSector] = useState('');
+  const [userProvince, setUserProvince] = useState('');
+  const [userCity, setUserCity] = useState('');
   const [loading, setLoading] = useState(true);
 
   async function loadUserProfile(userId: string, email: string) {
     const { data, error } = await supabase
       .from('user_profiles')
-      .select('role, status')
+      .select('role, status, sector, province, city')
       .eq('id', userId)
       .single();
     
@@ -177,6 +183,9 @@ export default function App() {
     
     if (data) {
       setUserRole(data.role as 'subcontractor' | 'prime' | 'admin');
+      setUserSector(data.sector || '');
+      setUserProvince(data.province || '');
+      setUserCity(data.city || '');
       // Admins are always active, regardless of database status
       const isAdmin = data.role === 'admin';
       const newStatus = isAdmin ? 'active' : (data.status || 'pending');
@@ -260,7 +269,7 @@ export default function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, userRole, userStatus, userEmail, userId, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, userRole, userStatus, userEmail, userId, userSector, userProvince, userCity, logout }}>
       <BrowserRouter>
         <AppRoutes />
       </BrowserRouter>

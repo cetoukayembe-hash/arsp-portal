@@ -34,19 +34,14 @@ export function SmartMatching() {
   async function fetchData() {
     setLoading(true);
     try {
-      // Fetch user profile FIRST
-      const { data: profile, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('id, sector, province, city, congolese_capital')
-        .eq('id', auth.userId)
-        .single();
-
-      if (profileError) {
-        console.error('Error fetching user profile:', profileError);
-      }
-      if (profile) {
-        setUserProfile(profile);
-      }
+      // User profile comes from auth context (already loaded in App.tsx)
+      const profile: UserProfile = {
+        id: auth.userId,
+        sector: auth.userSector,
+        province: auth.userProvince,
+        city: auth.userCity,
+      };
+      setUserProfile(profile);
 
       // Fetch enterprises and tenders
       const { data: ent, error: entError } = await supabase.from('enterprises').select('*');
@@ -130,12 +125,12 @@ export function SmartMatching() {
 
   const handleApply = (tenderId: string) => {
     // Navigate to tender detail or open application modal
-    window.location.href = `/appels-offres?id=${tenderId}&action=postuler`;
+    window.location.href = `/tenders?id=${tenderId}&action=postuler`;
   };
 
   const handleViewProfile = (enterpriseId: string) => {
     // Navigate to enterprise profile
-    window.location.href = `/entreprises/${enterpriseId}`;
+    window.location.href = `/enterprise-search?id=${enterpriseId}`;
   };
 
   if (loading) {
