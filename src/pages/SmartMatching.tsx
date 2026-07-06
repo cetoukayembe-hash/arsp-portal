@@ -472,7 +472,7 @@ export function SmartMatching() {
                     <div className="flex items-center justify-between text-sm">
                       <span className="flex items-center gap-2">
                         <DollarSign className="w-4 h-4 text-gray-400" />
-                        Capital congolais >= 51%
+                        Capital congolais {'≥'} 51%
                       </span>
                       <span className={selectedBreakdown.capital ? 'text-emerald-600 font-medium' : 'text-gray-400'}>
                         {selectedBreakdown.capital ? 'Correspond (+15%)' : '—'}
