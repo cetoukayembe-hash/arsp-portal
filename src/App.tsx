@@ -171,7 +171,7 @@ export default function App() {
   async function loadUserProfile(userId: string, email: string) {
     const { data, error } = await supabase
       .from('user_profiles')
-      .select('role, status')
+      .select('role, status, sector, province, city')
       .eq('id', userId)
       .single();
     
