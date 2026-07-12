@@ -250,7 +250,7 @@ export default function App() {
   // Register service worker for PWA
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch((err) => {
+      navigator.serviceWorker.register("./sw.js").catch((err) => {
         console.error("Service Worker registration failed:", err);
       });
     }
