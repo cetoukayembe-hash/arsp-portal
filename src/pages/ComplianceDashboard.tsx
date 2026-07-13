@@ -300,10 +300,10 @@ export function ComplianceDashboard() {
   async function fetchAllDocuments() {
     const { data, error } = await supabase
       .from("compliance_documents")
-      .select("*, enterprises(name)")
+      .select("*")
       .order("uploaded_at", { ascending: false });
     if (error) throw error;
-    setDocuments((data || []).map((d: any) => ({ ...d, status: computeStatus(d.expiry_date), enterprise_name: d.enterprises?.name })));
+    setDocuments((data || []).map((d: any) => ({ ...d, status: computeStatus(d.expiry_date) })));
   }
 
   async function fetchObligations() {
@@ -354,10 +354,10 @@ export function ComplianceDashboard() {
   async function fetchAllSubcontractors() {
     const { data, error } = await supabase
       .from("subcontractor_checks")
-      .select("*, enterprises(name)")
+      .select("*")
       .order("created_at", { ascending: false });
     if (error) throw error;
-    setSubcontractors((data || []).map((s: any) => ({ ...s, prime_name: s.enterprises?.name })));
+    setSubcontractors(data || []);
   }
 
   async function handleUploadDocument(e: React.FormEvent) {
