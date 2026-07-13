@@ -330,9 +330,9 @@ export function ComplianceDashboard() {
       .from("enterprises")
       .select("*")
       .eq("email", currentUserEmail)
-      .single();
-    if (error && error.code !== "PGRST116") throw error;
-    setEnterprise(data || null);
+      .limit(1);
+    if (error) throw error;
+    setEnterprise(data && data[0] ? data[0] : null);
   }
 
   async function fetchAllEnterprises() {
