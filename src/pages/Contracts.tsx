@@ -104,7 +104,8 @@ export function Contracts() {
 
   // Send notification helper
   async function sendNotification(userId: string, type: string, title: string, message: string, relatedId?: string, relatedType?: string) {
-    await supabase.from('notifications').insert([{
+    try {
+      await supabase.from('notifications').insert([{
       user_id: userId,
       type,
       title,
