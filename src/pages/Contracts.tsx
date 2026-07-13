@@ -106,14 +106,17 @@ export function Contracts() {
   async function sendNotification(userId: string, type: string, title: string, message: string, relatedId?: string, relatedType?: string) {
     try {
       await supabase.from('notifications').insert([{
-      user_id: userId,
-      type,
-      title,
-      message,
-      related_id: relatedId || null,
-      related_type: relatedType || null,
-      read: false,
-    }]);
+        user_id: userId,
+        type,
+        title,
+        message,
+        related_id: relatedId || null,
+        related_type: relatedType || null,
+        read: false,
+      }]);
+    } catch (err) {
+      console.warn('Failed to send notification:', err);
+    }
   }
 
   // Search subcontractors from registered enterprises
