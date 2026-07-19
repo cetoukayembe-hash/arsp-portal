@@ -208,76 +208,76 @@ export function PaymentVerification() {
       </div>
 
       <div className="flex flex-wrap gap-3 bg-white rounded-xl p-4 border">
-n        <div className="flex-1 min-w-[200px]">
-n          <div className="relative">
-n            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-n            <input
-n              type="text"
-n              placeholder="Rechercher entreprise ou reference..."
-n              value={searchQuery}
-n              onChange={(e) => setSearchQuery(e.target.value)}
-n              className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF] focus:border-[#007FFF]"
-n            />
-n          </div>
-n        </div>
-n        <select
-n          value={filterStatus}
-n          onChange={(e) => setFilterStatus(e.target.value as any)}
-n          className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF]"
-n        >
-n          <option value="all">Tous les statuts</option>
-n          <option value="pending">En attente</option>
-n          <option value="verified">Verifies</option>
-n          <option value="rejected">Rejetes</option>
-n        </select>
-n        <select
-n          value={filterMonth}
-n          onChange={(e) => setFilterMonth(e.target.value)}
-n          className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF]"
-n        >
-n          <option value="all">Tous les mois</option>
-n          <option value="Janvier">Janvier</option>
-n          <option value="Fevrier">Fevrier</option>
-n          <option value="Mars">Mars</option>
-n          <option value="Avril">Avril</option>
-n          <option value="Mai">Mai</option>
-n          <option value="Juin">Juin</option>
-n          <option value="Juillet">Juillet</option>
-n          <option value="Aout">Aout</option>
-n          <option value="Septembre">Septembre</option>
-n          <option value="Octobre">Octobre</option>
-n          <option value="Novembre">Novembre</option>
-n          <option value="Decembre">Decembre</option>
-n        </select>
-n        <select
-n          value={filterYear}
-n          onChange={(e) => setFilterYear(e.target.value)}
-n          className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF]"
-n        >
-n          <option value="all">Toutes les annees</option>
-n          <option value="2024">2024</option>
-n          <option value="2025">2025</option>
-n          <option value="2026">2026</option>
-n          <option value="2027">2027</option>
-n        </select>
-n        <select
-n          value={filterPrime}
-n          onChange={(e) => setFilterPrime(e.target.value)}
-n          className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF] min-w-[180px]"
-n        >
-n          <option value="all">Toutes les entreprises</option>
-n          {uniquePrimes.map(prime => (
-n            <option key={prime} value={prime}>{prime}</option>
-n          ))}
-n        </select>
-n        <button
-n          onClick={exportToExcel}
-n          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
-n        >
-n          <Download className="w-4 h-4" />
-n          Exporter Excel
-n        </button>
-n      </div>
+        <div className="flex-1 min-w-[200px]">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Rechercher entreprise ou reference..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF] focus:border-[#007FFF]"
+            />
+          </div>
+        </div>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value as any)}
+          className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF]"
+        >
+          <option value="all">Tous les statuts</option>
+          <option value="pending">En attente</option>
+          <option value="verified">Verifies</option>
+          <option value="rejected">Rejetes</option>
+        </select>
+        <select
+          value={filterMonth}
+          onChange={(e) => setFilterMonth(e.target.value)}
+          className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF]"
+        >
+          <option value="all">Tous les mois</option>
+          <option value="Janvier">Janvier</option>
+          <option value="Fevrier">Fevrier</option>
+          <option value="Mars">Mars</option>
+          <option value="Avril">Avril</option>
+          <option value="Mai">Mai</option>
+          <option value="Juin">Juin</option>
+          <option value="Juillet">Juillet</option>
+          <option value="Aout">Aout</option>
+          <option value="Septembre">Septembre</option>
+          <option value="Octobre">Octobre</option>
+          <option value="Novembre">Novembre</option>
+          <option value="Decembre">Decembre</option>
+        </select>
+        <select
+          value={filterYear}
+          onChange={(e) => setFilterYear(e.target.value)}
+          className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF]"
+        >
+          <option value="all">Toutes les annees</option>
+          <option value="2024">2024</option>
+          <option value="2025">2025</option>
+          <option value="2026">2026</option>
+          <option value="2027">2027</option>
+        </select>
+        <select
+          value={filterPrime}
+          onChange={(e) => setFilterPrime(e.target.value)}
+          className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF] min-w-[180px]"
+        >
+          <option value="all">Toutes les entreprises</option>
+          {uniquePrimes.map(prime => (
+            <option key={prime} value={prime}>{prime}</option>
+          ))}
+        </select>
+        <button
+          onClick={exportToExcel}
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          Exporter Excel
+        </button>
+      </div>
 
       <div className="bg-white rounded-xl border overflow-hidden">
         <table className="w-full text-sm">
