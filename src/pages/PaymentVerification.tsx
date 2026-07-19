@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle2, XCircle, Eye, Search, FileText, Clock } from 'lucide-react';
+import { CheckCircle2, XCircle, Eye, Search, FileText, Clock, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/App';
 
@@ -123,6 +124,25 @@ export function PaymentVerification() {
     }
   }
 
+
+  function exportToExcel() {
+    const data = filteredTransfers.map(t => ({
+      'Entreprise': t.prime_name || '',
+      'Periode': t.month + ' ' + t.year || '',
+      'Montant du': t.amount_due,
+      'Montant vire': t.amount_transferred,
+      'Reference': t.transfer_reference,
+      'Statut': t.status === 'pending' ? 'En attente' : t.status === 'verified' ? 'Verifie' : 'Rejete',
+      'Date soumission': new Date(t.created_at).toLocaleDateString('fr-FR'),
+      'Date verification': t.verified_at ? new Date(t.verified_at).toLocaleDateString('fr-FR') : '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Paiements ARSP');
+    XLSX.writeFile(wb, 'ARSP_paiements_' + new Date().toISOString().slice(0,10) + '.xlsx');
+  }
+
   const filteredTransfers = transfers.filter(t => {
     if (filterStatus !== 'all' && t.status !== filterStatus) return false;
     if (searchQuery && !t.prime_name?.toLowerCase().includes(searchQuery.toLowerCase()) && 
@@ -202,7 +222,14 @@ export function PaymentVerification() {
           <option value="verified">Verifies</option>
           <option value="rejected">Rejetes</option>
         </select>
-      </div>
+        <button
+          onClick={exportToExcel}
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
+        >
+          <Download className="w-4 h-4" />
+n          Exporter Excel
+n        </button>
+n      </div>
 
       <div className="bg-white rounded-xl border overflow-hidden">
         <table className="w-full text-sm">
