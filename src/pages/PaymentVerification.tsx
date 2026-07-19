@@ -128,6 +128,21 @@ export function PaymentVerification() {
   }
 
 
+
+  }
+
+  const uniquePrimes = Array.from(new Set(transfers.map(t => t.prime_name).filter(Boolean)));
+
+  const filteredTransfers = transfers.filter(t => {
+    if (filterStatus !== 'all' && t.status !== filterStatus) return false;
+    if (filterMonth !== 'all' && t.month !== filterMonth) return false;
+    if (filterYear !== 'all' && t.year?.toString() !== filterYear) return false;
+    if (filterPrime !== 'all' && t.prime_name !== filterPrime) return false;
+    if (searchQuery && !t.prime_name?.toLowerCase().includes(searchQuery.toLowerCase()) && 
+        !t.transfer_reference?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
+  });
+
   function exportToExcel() {
     const data = filteredTransfers.map(t => ({
       'Entreprise': t.prime_name || '',
@@ -144,19 +159,6 @@ export function PaymentVerification() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Paiements ARSP');
     XLSX.writeFile(wb, 'ARSP_paiements_' + new Date().toISOString().slice(0,10) + '.xlsx');
-  }
-
-  const uniquePrimes = Array.from(new Set(transfers.map(t => t.prime_name).filter(Boolean)));
-
-  const filteredTransfers = transfers.filter(t => {
-    if (filterStatus !== 'all' && t.status !== filterStatus) return false;
-    if (filterMonth !== 'all' && t.month !== filterMonth) return false;
-    if (filterYear !== 'all' && t.year?.toString() !== filterYear) return false;
-    if (filterPrime !== 'all' && t.prime_name !== filterPrime) return false;
-    if (searchQuery && !t.prime_name?.toLowerCase().includes(searchQuery.toLowerCase()) && 
-        !t.transfer_reference?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
 
   const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
     pending: { label: 'En attente', color: 'bg-amber-100 text-amber-700', icon: Clock },
