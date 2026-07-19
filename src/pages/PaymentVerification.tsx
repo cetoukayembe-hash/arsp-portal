@@ -142,13 +142,12 @@ export function PaymentVerification() {
     XLSX.writeFile(wb, 'ARSP_paiements_' + new Date().toISOString().slice(0,10) + '.xlsx');
   }
 
-  const uniquePrimes = Array.from(new Set(transfers.map(t => t.prime_name).filter(Boolean)));
 
   const filteredTransfers = transfers.filter(t => {
     if (filterStatus !== 'all' && t.status !== filterStatus) return false;
     if (filterMonth !== 'all' && t.month !== filterMonth) return false;
     if (filterYear !== 'all' && t.year?.toString() !== filterYear) return false;
-    if (filterPrime !== 'all' && t.prime_name !== filterPrime) return false;
+    if (filterPrime && filterPrime !== 'all' && !t.prime_name?.toLowerCase().includes(filterPrime.toLowerCase())) return false;
     if (searchQuery && !t.prime_name?.toLowerCase().includes(searchQuery.toLowerCase()) && 
         !t.transfer_reference?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
@@ -256,16 +255,16 @@ export function PaymentVerification() {
           <option value="2026">2026</option>
           <option value="2027">2027</option>
         </select>
-        <select
-          value={filterPrime}
-          onChange={(e) => setFilterPrime(e.target.value)}
-          className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF] min-w-[180px]"
-        >
-          <option value="all">Toutes les entreprises</option>
-          {uniquePrimes.map(prime => (
-            <option key={prime} value={prime}>{prime}</option>
-          ))}
-        </select>
+        <div className="relative min-w-[200px]">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Filtrer par entreprise..."
+            value={filterPrime === 'all' ? '' : filterPrime}
+            onChange={(e) => setFilterPrime(e.target.value || 'all')}
+            className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF] focus:border-[#007FFF]"
+          />
+        </div>
         <button
           onClick={exportToExcel}
           className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
