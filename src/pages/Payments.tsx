@@ -232,6 +232,35 @@ export function Payments() {
       </div>
 
       {/* Submit Payment Modal */}
+      {/* Receipts section */}
+      {transfers.filter(t => t.status === 'verified').length > 0 && (
+        <div>
+          <h3 className="text-lg font-semibold text-[#0a2540] mb-4">Recus ARSP</h3>
+          <div className="space-y-3">
+            {transfers.filter(t => t.status === 'verified').map((tr) => (
+              <div key={tr.id} className="bg-emerald-50 rounded-xl p-4 border border-emerald-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    <div>
+                      <p className="font-medium text-emerald-800">Recu ARSP - {tr.month} {tr.year}</p>
+                      <p className="text-sm text-emerald-600">Montant: {tr.amount_transferred?.toLocaleString('fr-FR')} $</p>
+                      <p className="text-xs text-emerald-500">Verifie le: {new Date(tr.verified_at).toLocaleDateString('fr-FR')}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => window.open(`/receipt/${tr.id}`, '_blank')}
+                    className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 transition-colors"
+                  >
+                    Telecharger
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {selectedDeclaration && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedDeclaration(null)}>
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
