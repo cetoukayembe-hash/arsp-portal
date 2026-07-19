@@ -29,7 +29,7 @@ const navGroups = [
     items: [
       { to: '/tenders', label: 'Appels d\'Offres', icon: Briefcase, roles: ['subcontractor', 'prime'] },
       { to: '/compliance', label: 'Conformite', icon: ShieldCheck, roles: ['subcontractor', 'prime', 'admin'] },
-      { to: '/declarations', label: 'Declarations', icon: ClipboardList, roles: ['prime', 'admin'] },
+      { to: '/declarations', label: 'Declarations', icon: ClipboardList, roles: ['prime'] },
     ],
   },
   {
@@ -48,7 +48,7 @@ const navGroups = [
     color: 'bg-amber-500',
     roles: ['subcontractor', 'prime', 'admin'],
     items: [
-      { to: '/payments', label: 'Paiements', icon: CreditCard, roles: ['prime', 'admin'] },
+      { to: '/payments', label: 'Paiements', icon: CreditCard, roles: ['prime'] },
       { to: '/esignature', label: 'E-Signature', icon: FileSignature, roles: ['subcontractor', 'prime'] },
       { to: '/disputes', label: 'Litiges', icon: Gavel, roles: ['subcontractor', 'prime', 'admin'] },
     ],
