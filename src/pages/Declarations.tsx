@@ -413,6 +413,7 @@ export function Declarations() {
         month: newDeclaration.month,
         year: newDeclaration.year,
         status: status,
+        amount_due: calculateArsp(),
         proof_of_payment_url: proofUrl || undefined,
         submitted_at: status === "submitted" ? new Date().toISOString() : null,
       }).eq("id", editingDeclarationId).select();
@@ -426,6 +427,7 @@ export function Declarations() {
         month: newDeclaration.month,
         year: newDeclaration.year,
         status: status,
+        amount_due: calculateArsp(),
         proof_of_payment_url: proofUrl,
         submitted_at: status === "submitted" ? new Date().toISOString() : null,
       }]).select();
