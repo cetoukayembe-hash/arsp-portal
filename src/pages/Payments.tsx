@@ -90,19 +90,36 @@ export function Payments() {
 
       if (updateError) throw updateError;
 
-      // Also create a payment_transfers record for admin tracking
-      const { error: transferError } = await supabase.from('payment_transfers').insert([{
-        declaration_id: selectedDeclaration.id,
-        prime_id: auth.userId,
-        amount_due: selectedDeclaration.amount_due,
-        amount_transferred: selectedDeclaration.amount_due,
-        transfer_reference: transferRef,
-        transfer_proof_url: urlData.publicUrl,
-        status: 'pending',
-      }]);
+      // Look up enterprise ID for this user
+      const { data: enterpriseData, error: enterpriseError } = await supabase
+        .from('enterprises')
+        .select('id')
+        .eq('email', auth.userEmail)
+        .limit(1);
 
-      if (transferError) {
-        console.warn('Transfer record creation failed (non-critical):', transferError);
+      if (enterpriseError) {
+        console.warn('Enterprise lookup failed:', enterpriseError);
+      }
+
+      const enterpriseId = enterpriseData?.[0]?.id;
+
+      if (enterpriseId) {
+        // Create payment_transfers record for admin tracking
+        const { error: transferError } = await supabase.from('payment_transfers').insert([{
+          declaration_id: selectedDeclaration.id,
+          prime_id: enterpriseId,
+          amount_due: selectedDeclaration.amount_due,
+          amount_transferred: selectedDeclaration.amount_due,
+          transfer_reference: transferRef,
+          transfer_proof_url: urlData.publicUrl,
+          status: 'pending',
+        }]);
+
+        if (transferError) {
+          console.warn('Transfer record creation failed:', transferError);
+        }
+      } else {
+        console.warn('No enterprise found for user, skipping payment_transfers record');
       }
 
       showToast('Preuve de paiement soumise avec succes', 'success');
