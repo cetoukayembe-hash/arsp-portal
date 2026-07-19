@@ -1,285 +1,319 @@
 import { useState, useEffect } from 'react';
-import { CreditCard, Plus, X, Download, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { Upload, CheckCircle2, Clock, AlertTriangle, Download, FileText, DollarSign, Calendar, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/App';
 
+interface Declaration {
+  id: string;
+  period: string;
+  total_amount: number;
+  amount_due: number;
+  payment_status: 'unpaid' | 'pending_verification' | 'verified' | 'overdue';
+  created_at: string;
+}
+
+interface Transfer {
+  id: string;
+  declaration_id: string;
+  amount_due: number;
+  amount_transferred: number;
+  transfer_reference: string;
+  status: 'pending' | 'verified' | 'rejected';
+  created_at: string;
+}
+
 export function Payments() {
   const auth = useAuth();
-  const [payments, setPayments] = useState<any[]>([]);
+  const [declarations, setDeclarations] = useState<Declaration[]>([]);
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showPay, setShowPay] = useState<any | null>(null);
-  const [showNew, setShowNew] = useState(false);
-  const [payMethod, setPayMethod] = useState<'bank' | 'card'>('bank');
-  const [paySuccess, setPaySuccess] = useState(false);
-  const [newPayment, setNewPayment] = useState({
-    description: '', amount: '', due_date: '', payer_name: '', payer_email: '',
-  });
+  const [selectedDeclaration, setSelectedDeclaration] = useState<Declaration | null>(null);
+  const [transferRef, setTransferRef] = useState('');
+  const [transferAmount, setTransferAmount] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  useEffect(() => { fetchPayments(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  async function fetchPayments() {
+  async function fetchData() {
     setLoading(true);
-    let query = supabase
-      .from('payments')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      // Fetch unpaid declarations for this prime
+      const { data: decData, error: decError } = await supabase
+        .from('declarations')
+        .select('id, period, total_amount, amount_due, payment_status, created_at')
+        .eq('prime_email', auth.userEmail)
+        .in('payment_status', ['unpaid', 'overdue'])
+        .order('created_at', { ascending: false });
 
-    if (auth.userRole === 'prime') {
-      query = query.eq('payer_email', auth.userEmail);
-    }
+      if (decError) throw decError;
+      setDeclarations(decData || []);
 
-    const { data } = await query;
-    if (data) setPayments(data);
-    setLoading(false);
-  }
+      // Fetch transfer history
+      const { data: trData, error: trError } = await supabase
+        .from('payment_transfers')
+        .select('id, declaration_id, amount_due, amount_transferred, transfer_reference, status, created_at')
+        .eq('prime_id', auth.userId)
+        .order('created_at', { ascending: false });
 
-  async function handleCreatePayment() {
-    const { error } = await supabase.from('payments').insert([{
-      reference: 'PAY-' + Date.now(),
-      description: newPayment.description,
-      amount: parseFloat(newPayment.amount),
-      currency: 'USD',
-      status: 'pending',
-      payer_name: newPayment.payer_name,
-      payer_email: newPayment.payer_email,
-      due_date: newPayment.due_date,
-    }]);
-    if (!error) {
-      setShowNew(false);
-      setNewPayment({ description: '', amount: '', due_date: '', payer_name: '', payer_email: '' });
-      fetchPayments();
+      if (trError) throw trError;
+      setTransfers(trData || []);
+    } catch (err) {
+      console.error('Error fetching payments:', err);
+      showToast('Erreur lors du chargement', 'error');
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function handlePay(payment: any) {
-    const receiptNumber = 'REC-' + Date.now();
-    const { error } = await supabase
-      .from('payments')
-      .update({
-        status: 'paid',
-        method: payMethod,
-        paid_date: new Date().toISOString().split('T')[0],
-        receipt_number: receiptNumber,
-      })
-      .eq('id', payment.id);
-    if (!error) {
-      setPaySuccess(true);
-      setTimeout(() => {
-        setShowPay(null);
-        setPaySuccess(false);
-        fetchPayments();
-      }, 2000);
+  function showToast(message: string, type: 'success' | 'error' = 'success') {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  }
+
+  async function handleSubmitTransfer() {
+    if (!selectedDeclaration || !uploadFile || !transferRef) {
+      showToast('Veuillez remplir tous les champs', 'error');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Upload proof file
+      const fileName = `transfer-${selectedDeclaration.id}-${Date.now()}.${uploadFile.name.split('.').pop()}`;
+      const { error: upError } = await supabase.storage
+        .from('transfer_proofs')
+        .upload(fileName, uploadFile);
+
+      if (upError) throw upError;
+
+      const { data: urlData } = supabase.storage
+        .from('transfer_proofs')
+        .getPublicUrl(fileName);
+
+      // Create transfer record
+      const { error: insertError } = await supabase.from('payment_transfers').insert([{
+        declaration_id: selectedDeclaration.id,
+        prime_id: auth.userId,
+        amount_due: selectedDeclaration.amount_due,
+        amount_transferred: parseFloat(transferAmount) || selectedDeclaration.amount_due,
+        transfer_reference: transferRef,
+        transfer_proof_url: urlData.publicUrl,
+        status: 'pending',
+      }]);
+
+      if (insertError) throw insertError;
+
+      // Update declaration status
+      await supabase.from('declarations')
+        .update({ payment_status: 'pending_verification' })
+        .eq('id', selectedDeclaration.id);
+
+      showToast('Preuve de virement soumise avec succes', 'success');
+      setSelectedDeclaration(null);
+      setTransferRef('');
+      setTransferAmount('');
+      setUploadFile(null);
+      fetchData();
+    } catch (err) {
+      console.error('Error submitting transfer:', err);
+      showToast('Erreur lors de la soumission', 'error');
+    } finally {
+      setSubmitting(false);
     }
   }
 
-  const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-    pending: { label: 'En attente', color: 'bg-amber-100 text-amber-700', icon: Clock },
-    paid: { label: 'Paye', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2 },
+  const statusConfig = {
+    unpaid: { label: 'Non paye', color: 'bg-amber-100 text-amber-700', icon: Clock },
+    pending_verification: { label: 'En attente de verification', color: 'bg-blue-100 text-blue-700', icon: Clock },
+    verified: { label: 'Verifie', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2 },
     overdue: { label: 'En retard', color: 'bg-red-100 text-red-700', icon: AlertTriangle },
   };
 
-  const totalPending = payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
-  const totalPaid = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#007FFF]"></div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-[#0a2540]">
-          {auth.userRole === 'admin' ? 'Gestion des Paiements' : 'Mes Paiements'}
-        </h2>
-        {auth.userRole === 'admin' && (
-          <button
-            onClick={() => setShowNew(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#0a2540] text-white rounded-lg text-sm font-medium hover:bg-[#0d2f4f]"
-          >
-            <Plus className="w-4 h-4" />
-            Nouvelle facture
-          </button>
-        )}
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-xl p-5 card-shadow">
-          <div className="text-sm text-gray-500 mb-1">Total en attente</div>
-          <div className="text-2xl font-bold text-amber-600">${totalPending.toLocaleString()}</div>
-          <div className="text-xs text-gray-400 mt-1">{payments.filter(p => p.status === 'pending').length} facture(s)</div>
-        </div>
-        <div className="bg-white rounded-xl p-5 card-shadow">
-          <div className="text-sm text-gray-500 mb-1">Total paye</div>
-          <div className="text-2xl font-bold text-emerald-600">${totalPaid.toLocaleString()}</div>
-          <div className="text-xs text-gray-400 mt-1">{payments.filter(p => p.status === 'paid').length} paiement(s)</div>
-        </div>
-        <div className="bg-white rounded-xl p-5 card-shadow">
-          <div className="text-sm text-gray-500 mb-1">Total factures</div>
-          <div className="text-2xl font-bold text-[#0a2540]">${(totalPending + totalPaid).toLocaleString()}</div>
-          <div className="text-xs text-gray-400 mt-1">{payments.length} facture(s) au total</div>
-        </div>
-      </div>
-
-      {/* Payments List */}
-      {loading ? (
-        <div className="text-center py-12 text-gray-500">Chargement...</div>
-      ) : payments.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl card-shadow">
-          <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">
-            {auth.userRole === 'prime' ? 'Aucune facture a votre nom' : 'Aucun paiement disponible'}
-          </p>
-          {auth.userRole === 'admin' && (
-            <button onClick={() => setShowNew(true)} className="mt-3 text-sm text-[#007FFF] hover:underline">
-              Creer une premiere facture
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {payments.map((p) => {
-            const status = statusConfig[p.status] || statusConfig.pending;
-            const Icon = status.icon;
-            return (
-              <div key={p.id} className="bg-white rounded-xl p-5 card-shadow hover:card-shadow-hover transition-all">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-lg font-semibold text-[#0a2540]">{p.description}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${status.color}`}>
-                        {status.label}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-500 mb-2">{p.reference}</p>
-                    <div className="flex flex-wrap gap-3 text-xs text-gray-500">
-                      <span>💰 ${p.amount?.toLocaleString()} {p.currency}</span>
-                      {p.due_date && <span>📅 Echeance: {p.due_date}</span>}
-                      {p.payer_name && <span>👤 {p.payer_name}</span>}
-                      {p.method && <span>💳 {p.method === 'bank' ? 'Virement bancaire' : 'Carte'}</span>}
-                      {p.paid_date && <span>✅ Paye le: {p.paid_date}</span>}
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2 shrink-0">
-                    <Icon className="w-5 h-5 text-gray-400" />
-                    {p.status === 'pending' && auth.userRole === 'prime' && (
-                      <button
-                        onClick={() => setShowPay(p)}
-                        className="px-3 py-1.5 bg-[#007FFF] text-white rounded-lg text-xs font-medium hover:bg-[#0066CC]"
-                      >
-                        Payer
-                      </button>
-                    )}
-                    {p.status === 'paid' && p.receipt_number && (
-                      <button className="flex items-center gap-1 text-xs text-[#007FFF] hover:underline">
-                        <Download className="w-3 h-3" />
-                        Recu
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+    <div className="space-y-6">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg ${toast.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+          {toast.message}
         </div>
       )}
 
-      {/* New Payment Modal - Admin only */}
-      {showNew && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowNew(false)}>
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-[#0a2540]">Nouvelle facture</h3>
-                <button onClick={() => setShowNew(false)}><X className="w-5 h-5 text-gray-500" /></button>
-              </div>
-              <div className="space-y-3">
-                <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Description *" value={newPayment.description} onChange={(e) => setNewPayment({...newPayment, description: e.target.value})} />
-                <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Nom du payeur" value={newPayment.payer_name} onChange={(e) => setNewPayment({...newPayment, payer_name: e.target.value})} />
-                <input type="email" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Email du payeur *" value={newPayment.payer_email} onChange={(e) => setNewPayment({...newPayment, payer_email: e.target.value})} />
-                <input type="number" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Montant (USD) *" value={newPayment.amount} onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})} />
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Date d echeance</label>
-                  <input type="date" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" value={newPayment.due_date} onChange={(e) => setNewPayment({...newPayment, due_date: e.target.value})} />
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-lg bg-[#007FFF] text-white flex items-center justify-center">
+          <DollarSign className="w-5 h-5" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-[#0a2540]">Paiements ARSP</h2>
+          <p className="text-sm text-gray-500">Redevance de 1.2% sur les paiements aux sous-traitants</p>
+        </div>
+      </div>
+
+      {/* Info banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+        <FileText className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+        <p className="text-sm text-blue-700">
+          Apres avoir declare vos paiements aux sous-traitants, vous devez verser 
+          <strong> 1.2% du montant total</strong> a l'ARSP via virement bancaire. 
+          Uploadez votre preuve de virement ci-dessous.
+        </p>
+      </div>
+
+      {/* Pending declarations */}
+      <div>
+        <h3 className="text-lg font-semibold text-[#0a2540] mb-4">Declarations en attente de paiement</h3>
+        {declarations.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-xl border">
+            <CheckCircle2 className="w-12 h-12 text-emerald-300 mx-auto mb-3" />
+            <p className="text-gray-500">Aucun paiement en attente</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {declarations.map((dec) => {
+              const StatusIcon = statusConfig[dec.payment_status].icon;
+              return (
+                <div key={dec.id} className="bg-white rounded-xl p-5 border hover:shadow-md transition-all">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold text-[#0a2540]">Declaration {dec.period}</h4>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig[dec.payment_status].color}`}>
+                          <StatusIcon className="w-3 h-3 inline mr-1" />
+                          {statusConfig[dec.payment_status].label}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1">
+                        Montant total declare: <strong>{dec.total_amount?.toLocaleString('fr-FR')} $</strong>
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Montant du a l'ARSP (1.2%): <strong className="text-[#007FFF]">{dec.amount_due?.toLocaleString('fr-FR')} $</strong>
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedDeclaration(dec)}
+                      className="px-4 py-2 bg-[#007FFF] text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      Payer <ChevronRight className="w-4 h-4 inline" />
+                    </button>
+                  </div>
                 </div>
-                <button onClick={handleCreatePayment} className="w-full py-2.5 bg-[#007FFF] text-white rounded-lg font-semibold hover:bg-[#0066CC]">
-                  Creer la facture
-                </button>
-              </div>
-            </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Transfer history */}
+      {transfers.length > 0 && (
+        <div>
+          <h3 className="text-lg font-semibold text-[#0a2540] mb-4">Historique des virements</h3>
+          <div className="bg-white rounded-xl border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Reference</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Montant</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Statut</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {transfers.map((tr) => (
+                  <tr key={tr.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-mono text-xs">{tr.transfer_reference}</td>
+                    <td className="px-4 py-3">{tr.amount_transferred?.toLocaleString('fr-FR')} $</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig[tr.status].color}`}>
+                        {statusConfig[tr.status].label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500">{new Date(tr.created_at).toLocaleDateString('fr-FR')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* Pay Modal - Prime only */}
-      {showPay && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowPay(null)}>
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-[#0a2540]">Effectuer un paiement</h3>
-                <button onClick={() => setShowPay(null)}><X className="w-5 h-5 text-gray-500" /></button>
+      {/* Submit Transfer Modal */}
+      {selectedDeclaration && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedDeclaration(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 border-b flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[#0a2540]">Soumettre le virement</h3>
+              <button onClick={() => setSelectedDeclaration(null)} className="p-1 hover:bg-gray-100 rounded-lg">
+                <span className="text-2xl text-gray-400">&times;</span>
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <p className="text-sm text-blue-700">
+                  Montant a payer: <strong className="text-lg">{selectedDeclaration.amount_due?.toLocaleString('fr-FR')} $</strong>
+                </p>
+                <p className="text-xs text-blue-600 mt-1">Declaration: {selectedDeclaration.period}</p>
               </div>
-              {paySuccess ? (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-                  </div>
-                  <h4 className="text-lg font-bold text-[#0a2540] mb-2">Paiement effectue!</h4>
-                  <p className="text-gray-500 text-sm">Votre recu sera disponible dans quelques instants.</p>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Reference du virement bancaire</label>
+                <input
+                  type="text"
+                  value={transferRef}
+                  onChange={(e) => setTransferRef(e.target.value)}
+                  placeholder="Ex: VIR-2026-001234"
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF] focus:border-[#007FFF]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Montant vire (laissez vide si identique)</label>
+                <input
+                  type="number"
+                  value={transferAmount}
+                  onChange={(e) => setTransferAmount(e.target.value)}
+                  placeholder={selectedDeclaration.amount_due?.toString()}
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF] focus:border-[#007FFF]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Preuve de virement (PDF ou image)</label>
+                <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer">
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                    className="hidden"
+                    id="transfer-proof"
+                  />
+                  <label htmlFor="transfer-proof" className="cursor-pointer">
+                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">
+                      {uploadFile ? uploadFile.name : 'Cliquez pour uploader le reçu de virement'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">PDF, PNG, JPG (max 5MB)</p>
+                  </label>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="bg-[#F6F9FC] rounded-lg p-4">
-                    <p className="text-sm text-gray-500">Montant a payer</p>
-                    <p className="text-2xl font-bold text-[#0a2540]">${showPay.amount?.toLocaleString()} USD</p>
-                    <p className="text-xs text-gray-400">{showPay.description}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">Methode de paiement</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => setPayMethod('bank')}
-                        className={`p-3 rounded-xl border-2 text-center transition-all ${payMethod === 'bank' ? 'border-[#007FFF] bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
-                      >
-                        <div className="text-xl mb-1">🏦</div>
-                        <div className="text-sm font-medium text-[#0a2540]">Virement bancaire</div>
-                        <div className="text-xs text-gray-400">2-3 jours ouvrables</div>
-                      </button>
-                      <button
-                        onClick={() => setPayMethod('card')}
-                        className={`p-3 rounded-xl border-2 text-center transition-all ${payMethod === 'card' ? 'border-[#007FFF] bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
-                      >
-                        <div className="text-xl mb-1">💳</div>
-                        <div className="text-sm font-medium text-[#0a2540]">Carte bancaire</div>
-                        <div className="text-xs text-gray-400">Immediat</div>
-                      </button>
-                    </div>
-                  </div>
-                  {payMethod === 'bank' && (
-                    <div className="bg-[#F6F9FC] rounded-lg p-4 text-sm">
-                      <p className="font-medium text-[#0a2540] mb-2">Coordonnees bancaires ARSP</p>
-                      <div className="space-y-1 text-xs text-gray-600">
-                        <div className="flex justify-between"><span>Banque:</span><span className="font-medium">Rawbank RDC</span></div>
-                        <div className="flex justify-between"><span>Compte:</span><span className="font-medium">0001-2345-6789</span></div>
-                        <div className="flex justify-between"><span>Reference:</span><span className="font-medium">{showPay.reference}</span></div>
-                      </div>
-                    </div>
-                  )}
-                  {payMethod === 'card' && (
-                    <div className="space-y-3">
-                      <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Numero de carte" maxLength={19} />
-                      <div className="grid grid-cols-2 gap-3">
-                        <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="MM/AA" maxLength={5} />
-                        <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="CVV" maxLength={3} />
-                      </div>
-                      <input className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#007FFF]" placeholder="Nom sur la carte" />
-                    </div>
-                  )}
-                  <button
-                    onClick={() => handlePay(showPay)}
-                    className="w-full py-2.5 bg-[#0a2540] text-white rounded-lg font-semibold hover:bg-[#0d2f4f]"
-                  >
-                    Confirmer le paiement de ${showPay.amount?.toLocaleString()} USD
-                  </button>
-                </div>
-              )}
+              </div>
+
+              <button
+                onClick={handleSubmitTransfer}
+                disabled={submitting || !transferRef || !uploadFile}
+                className="w-full py-3 bg-[#007FFF] text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? 'Soumission en cours...' : 'Soumettre pour verification'}
+              </button>
             </div>
           </div>
         </div>
