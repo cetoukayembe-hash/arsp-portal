@@ -14,8 +14,8 @@ const navGroups = [
     color: 'bg-blue-500',
     roles: ['subcontractor', 'prime', 'admin'],
         items: [
-      { to: '/register', label: 'Inscription', icon: ClipboardList, roles: ['subcontractor', 'prime'] },
-      { to: '/digital-id', label: 'Carte Numerique', icon: CreditCard, roles: ['subcontractor', 'prime'] },
+      { to: '/register', label: 'Inscription', icon: ClipboardList, roles: ['subcontractor', 'prime', 'admin'] },
+      { to: '/digital-id', label: 'Carte Numerique', icon: CreditCard, roles: ['subcontractor', 'prime', 'admin'] },
       { to: '/enterprise-search', label: 'Registre Entreprises', icon: Search, roles: ['subcontractor', 'prime', 'admin'] },
       { to: '/approvals', label: 'Approbations', icon: ShieldCheck, roles: ['admin'] },
       { to: '/admin/audit', label: 'Journal d\'audit', icon: ScrollText, CheckCircle2, roles: ['admin'] },
@@ -27,7 +27,7 @@ const navGroups = [
     color: 'bg-emerald-500',
     roles: ['subcontractor', 'prime', 'admin'],
     items: [
-      { to: '/tenders', label: 'Appels d\'Offres', icon: Briefcase, roles: ['subcontractor', 'prime'] },
+      { to: '/tenders', label: 'Appels d\'Offres', icon: Briefcase, roles: ['subcontractor', 'prime', 'admin'] },
       { to: '/compliance', label: 'Conformite', icon: ShieldCheck, roles: ['subcontractor', 'prime', 'admin'] },
       { to: '/declarations', label: 'Declarations', icon: ClipboardList, roles: ['prime', 'admin'] },
     ],
@@ -37,7 +37,7 @@ const navGroups = [
     color: 'bg-violet-500',
     roles: ['subcontractor', 'prime', 'admin'],
     items: [
-      { to: '/matching', label: 'Matching Intelligent', icon: Zap, roles: ['subcontractor', 'prime'] },
+      { to: '/matching', label: 'Matching Intelligent', icon: Zap, roles: ['subcontractor', 'prime', 'admin'] },
       { to: '/messages', label: 'Messagerie', icon: MessageSquare, roles: ['subcontractor', 'prime', 'admin'] },
       { to: '/contracts', label: 'Contrats', icon: FileSignature, roles: ['subcontractor', 'prime', 'admin'] },
       { to: '/analytics', label: 'Analytics', icon: BarChart3, roles: ['admin'] },
@@ -50,7 +50,7 @@ const navGroups = [
     roles: ['subcontractor', 'prime', 'admin'],
     items: [
       { to: '/payments', label: 'Paiements', icon: CreditCard, roles: ['prime', 'admin'] },
-      { to: '/esignature', label: 'E-Signature', icon: FileSignature, roles: ['subcontractor', 'prime'] },
+      { to: '/esignature', label: 'E-Signature', icon: FileSignature, roles: ['subcontractor', 'prime', 'admin'] },
       { to: '/disputes', label: 'Litiges', icon: Gavel, roles: ['subcontractor', 'prime', 'admin'] },
     ],
   },
