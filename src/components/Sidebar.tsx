@@ -41,6 +41,7 @@ const navGroups = [
       { to: '/messages', label: 'Messagerie', icon: MessageSquare, roles: ['subcontractor', 'prime', 'admin'] },
       { to: '/contracts', label: 'Contrats', icon: FileSignature, roles: ['subcontractor', 'prime', 'admin'] },
       { to: '/analytics', label: 'Analytics', icon: BarChart3, roles: ['admin'] },
+      { to: '/payment-verification', label: 'Verification Paiements', icon: CheckCircle2, roles: ['admin'] },
     ],
   },
   {
