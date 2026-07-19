@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   ClipboardList, CreditCard, FileSignature, MessageSquare,
   Search, ShieldCheck, Briefcase, BarChart3, Zap, Gavel,
-  ChevronLeft, ChevronRight, Menu, X, ScrollText
+  ChevronLeft, ChevronRight, Menu, X, ScrollText, CheckCircle2
 } from 'lucide-react';
   
 import { useAuth } from '@/App';
@@ -18,7 +18,7 @@ const navGroups = [
       { to: '/digital-id', label: 'Carte Numerique', icon: CreditCard, roles: ['subcontractor', 'prime'] },
       { to: '/enterprise-search', label: 'Registre Entreprises', icon: Search, roles: ['subcontractor', 'prime', 'admin'] },
       { to: '/approvals', label: 'Approbations', icon: ShieldCheck, roles: ['admin'] },
-      { to: '/admin/audit', label: 'Journal d\'audit', icon: ScrollText, roles: ['admin'] },
+      { to: '/admin/audit', label: 'Journal d\'audit', icon: ScrollText, CheckCircle2, roles: ['admin'] },
     ],  
   
   },
