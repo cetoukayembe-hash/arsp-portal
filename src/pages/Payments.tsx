@@ -1,68 +1,53 @@
 import { useState, useEffect } from 'react';
-import { Upload, CheckCircle2, Clock, AlertTriangle, Download, FileText, DollarSign, Calendar, ChevronRight } from 'lucide-react';
+import { Upload, CheckCircle2, Clock, AlertTriangle, Download, FileText, DollarSign, ChevronRight, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/App';
 
 interface Declaration {
   id: string;
-  period: string;
-  total_amount: number;
+  prime_email: string;
+  prime_name: string;
+  month: string;
+  year: number;
+  status: string;
   amount_due: number;
   payment_status: 'unpaid' | 'pending_verification' | 'verified' | 'overdue';
-  created_at: string;
-}
-
-interface Transfer {
-  id: string;
-  declaration_id: string;
-  amount_due: number;
-  amount_transferred: number;
-  transfer_reference: string;
-  status: 'pending' | 'verified' | 'rejected';
+  proof_of_payment_url: string | null;
+  submitted_at: string;
   created_at: string;
 }
 
 export function Payments() {
   const auth = useAuth();
   const [declarations, setDeclarations] = useState<Declaration[]>([]);
-  const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDeclaration, setSelectedDeclaration] = useState<Declaration | null>(null);
   const [transferRef, setTransferRef] = useState('');
-  const [transferAmount, setTransferAmount] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
-    fetchData();
+    fetchDeclarations();
   }, []);
 
-  async function fetchData() {
+  async function fetchDeclarations() {
     setLoading(true);
     try {
-      // Fetch unpaid declarations for this prime
-      const { data: decData, error: decError } = await supabase
+      const { data, error } = await supabase
         .from('declarations')
-        .select('id, period, total_amount, amount_due, payment_status, created_at')
+        .select('id, prime_email, prime_name, month, year, status, amount_due, payment_status, proof_of_payment_url, submitted_at, created_at')
         .eq('prime_email', auth.userEmail)
-        .in('payment_status', ['unpaid', 'overdue'])
         .order('created_at', { ascending: false });
 
-      if (decError) throw decError;
-      setDeclarations(decData || []);
+      if (error) {
+        console.error('Declarations error:', error.message, error.code);
+        throw error;
+      }
 
-      // Fetch transfer history
-      const { data: trData, error: trError } = await supabase
-        .from('payment_transfers')
-        .select('id, declaration_id, amount_due, amount_transferred, transfer_reference, status, created_at')
-        .eq('prime_id', auth.userId)
-        .order('created_at', { ascending: false });
-
-      if (trError) throw trError;
-      setTransfers(trData || []);
+      setDeclarations(data || []);
     } catch (err) {
-      console.error('Error fetching payments:', err);
+      console.error('Error fetching declarations:', err);
       showToast('Erreur lors du chargement', 'error');
     } finally {
       setLoading(false);
@@ -74,7 +59,7 @@ export function Payments() {
     setTimeout(() => setToast(null), 4000);
   }
 
-  async function handleSubmitTransfer() {
+  async function handleSubmitPayment() {
     if (!selectedDeclaration || !uploadFile || !transferRef) {
       showToast('Veuillez remplir tous les champs', 'error');
       return;
@@ -82,44 +67,51 @@ export function Payments() {
 
     setSubmitting(true);
     try {
-      // Upload proof file
-      const fileName = `transfer-${selectedDeclaration.id}-${Date.now()}.${uploadFile.name.split('.').pop()}`;
+      // Upload proof to existing Documents bucket (not transfer_proofs)
+      const fileName = `payment-proof-${selectedDeclaration.id}-${Date.now()}.${uploadFile.name.split('.').pop()}`;
       const { error: upError } = await supabase.storage
-        .from('transfer_proofs')
+        .from('Documents')
         .upload(fileName, uploadFile);
 
       if (upError) throw upError;
 
       const { data: urlData } = supabase.storage
-        .from('transfer_proofs')
+        .from('Documents')
         .getPublicUrl(fileName);
 
-      // Create transfer record
-      const { error: insertError } = await supabase.from('payment_transfers').insert([{
+      // Update the existing declaration with proof and payment status
+      const { error: updateError } = await supabase
+        .from('declarations')
+        .update({
+          proof_of_payment_url: urlData.publicUrl,
+          payment_status: 'pending_verification',
+        })
+        .eq('id', selectedDeclaration.id);
+
+      if (updateError) throw updateError;
+
+      // Also create a payment_transfers record for admin tracking
+      const { error: transferError } = await supabase.from('payment_transfers').insert([{
         declaration_id: selectedDeclaration.id,
         prime_id: auth.userId,
         amount_due: selectedDeclaration.amount_due,
-        amount_transferred: parseFloat(transferAmount) || selectedDeclaration.amount_due,
+        amount_transferred: selectedDeclaration.amount_due,
         transfer_reference: transferRef,
         transfer_proof_url: urlData.publicUrl,
         status: 'pending',
       }]);
 
-      if (insertError) throw insertError;
+      if (transferError) {
+        console.warn('Transfer record creation failed (non-critical):', transferError);
+      }
 
-      // Update declaration status
-      await supabase.from('declarations')
-        .update({ payment_status: 'pending_verification' })
-        .eq('id', selectedDeclaration.id);
-
-      showToast('Preuve de virement soumise avec succes', 'success');
+      showToast('Preuve de paiement soumise avec succes', 'success');
       setSelectedDeclaration(null);
       setTransferRef('');
-      setTransferAmount('');
       setUploadFile(null);
-      fetchData();
+      fetchDeclarations();
     } catch (err) {
-      console.error('Error submitting transfer:', err);
+      console.error('Error submitting payment:', err);
       showToast('Erreur lors de la soumission', 'error');
     } finally {
       setSubmitting(false);
@@ -143,7 +135,6 @@ export function Payments() {
 
   return (
     <div className="space-y-6">
-      {/* Toast */}
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg ${toast.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
           {toast.message}
@@ -160,52 +151,65 @@ export function Payments() {
         </div>
       </div>
 
-      {/* Info banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
         <FileText className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
         <p className="text-sm text-blue-700">
           Apres avoir declare vos paiements aux sous-traitants, vous devez verser 
           <strong> 1.2% du montant total</strong> a l'ARSP via virement bancaire. 
-          Uploadez votre preuve de virement ci-dessous.
+          Uploadez votre preuve de virement ici.
         </p>
       </div>
 
-      {/* Pending declarations */}
       <div>
         <h3 className="text-lg font-semibold text-[#0a2540] mb-4">Declarations en attente de paiement</h3>
         {declarations.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border">
             <CheckCircle2 className="w-12 h-12 text-emerald-300 mx-auto mb-3" />
-            <p className="text-gray-500">Aucun paiement en attente</p>
+            <p className="text-gray-500">Aucune declaration en attente de paiement</p>
           </div>
         ) : (
           <div className="space-y-4">
             {declarations.map((dec) => {
-              const StatusIcon = statusConfig[dec.payment_status].icon;
+              const StatusIcon = statusConfig[dec.payment_status || 'unpaid'].icon;
+              const periodLabel = `${dec.month} ${dec.year}`;
               return (
                 <div key={dec.id} className="bg-white rounded-xl p-5 border hover:shadow-md transition-all">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-semibold text-[#0a2540]">Declaration {dec.period}</h4>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig[dec.payment_status].color}`}>
+                        <h4 className="font-semibold text-[#0a2540]">Declaration {periodLabel}</h4>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig[dec.payment_status || 'unpaid'].color}`}>
                           <StatusIcon className="w-3 h-3 inline mr-1" />
-                          {statusConfig[dec.payment_status].label}
+                          {statusConfig[dec.payment_status || 'unpaid'].label}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 mb-1">
-                        Montant total declare: <strong>{dec.total_amount?.toLocaleString('fr-FR')} $</strong>
-                      </p>
                       <p className="text-sm text-gray-600">
                         Montant du a l'ARSP (1.2%): <strong className="text-[#007FFF]">{dec.amount_due?.toLocaleString('fr-FR')} $</strong>
                       </p>
+                      {dec.proof_of_payment_url && (
+                        <p className="text-xs text-emerald-600 mt-1">
+                          Preuve de paiement deja soumise
+                        </p>
+                      )}
                     </div>
-                    <button
-                      onClick={() => setSelectedDeclaration(dec)}
-                      className="px-4 py-2 bg-[#007FFF] text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                    >
-                      Payer <ChevronRight className="w-4 h-4 inline" />
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      {dec.payment_status === 'verified' ? (
+                        <span className="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium flex items-center gap-1">
+                          <CheckCircle2 className="w-4 h-4" /> Paye
+                        </span>
+                      ) : dec.proof_of_payment_url ? (
+                        <span className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
+                          En verification
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setSelectedDeclaration(dec)}
+                          className="px-4 py-2 bg-[#007FFF] text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                        >
+                          Payer <ChevronRight className="w-4 h-4 inline" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -214,40 +218,7 @@ export function Payments() {
         )}
       </div>
 
-      {/* Transfer history */}
-      {transfers.length > 0 && (
-        <div>
-          <h3 className="text-lg font-semibold text-[#0a2540] mb-4">Historique des virements</h3>
-          <div className="bg-white rounded-xl border overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Reference</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Montant</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Statut</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {transfers.map((tr) => (
-                  <tr key={tr.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-xs">{tr.transfer_reference}</td>
-                    <td className="px-4 py-3">{tr.amount_transferred?.toLocaleString('fr-FR')} $</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig[tr.status].color}`}>
-                        {statusConfig[tr.status].label}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">{new Date(tr.created_at).toLocaleDateString('fr-FR')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Submit Transfer Modal */}
+      {/* Submit Payment Modal */}
       {selectedDeclaration && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedDeclaration(null)}>
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -262,7 +233,7 @@ export function Payments() {
                 <p className="text-sm text-blue-700">
                   Montant a payer: <strong className="text-lg">{selectedDeclaration.amount_due?.toLocaleString('fr-FR')} $</strong>
                 </p>
-                <p className="text-xs text-blue-600 mt-1">Declaration: {selectedDeclaration.period}</p>
+                <p className="text-xs text-blue-600 mt-1">Declaration: {selectedDeclaration.month} {selectedDeclaration.year}</p>
               </div>
 
               <div>
@@ -272,17 +243,6 @@ export function Payments() {
                   value={transferRef}
                   onChange={(e) => setTransferRef(e.target.value)}
                   placeholder="Ex: VIR-2026-001234"
-                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF] focus:border-[#007FFF]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Montant vire (laissez vide si identique)</label>
-                <input
-                  type="number"
-                  value={transferAmount}
-                  onChange={(e) => setTransferAmount(e.target.value)}
-                  placeholder={selectedDeclaration.amount_due?.toString()}
                   className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#007FFF] focus:border-[#007FFF]"
                 />
               </div>
@@ -308,7 +268,7 @@ export function Payments() {
               </div>
 
               <button
-                onClick={handleSubmitTransfer}
+                onClick={handleSubmitPayment}
                 disabled={submitting || !transferRef || !uploadFile}
                 className="w-full py-3 bg-[#007FFF] text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
