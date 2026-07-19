@@ -13,6 +13,7 @@ import { Messages } from './pages/Messages';
 import { Analytics } from './pages/Analytics';
 import { Contracts } from './pages/Contracts';
 import { Payments } from './pages/Payments';
+import { PaymentVerification } from "./pages/PaymentVerification";
 import { ESignature } from './pages/ESignature';
 import { DisputeResolution } from './pages/DisputeResolution';
 import { Approvals } from './pages/Approvals';
@@ -143,6 +144,7 @@ function AppRoutes() {
       <Route path="/matching" element={<ProtectedRoute><SmartMatching /></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin']}><Analytics /></ProtectedRoute>} />
+      <Route path="/payment-verification" element={<ProtectedRoute allowedRoles={['admin']}><PaymentVerification /></ProtectedRoute>} />
       <Route path="/contracts" element={<ProtectedRoute><Contracts /></ProtectedRoute>} />
       <Route path="/payments" element={<ProtectedRoute allowedRoles={['prime', 'admin']}><Payments /></ProtectedRoute>} />
       <Route path="/esignature" element={<ProtectedRoute><ESignature /></ProtectedRoute>} />
