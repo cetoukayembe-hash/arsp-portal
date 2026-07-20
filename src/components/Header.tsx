@@ -9,6 +9,9 @@ export function Header() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [lang, setLang] = useState("FR");
   const [notifications, setNotifications] = useState([]);
+  const [dismissedNotifs, setDismissedNotifs] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('dismissedNotifications') || '[]'); } catch { return []; }
+  });
 
   useEffect(() => {
     if (auth.isAuthenticated) fetchNotifications();
@@ -75,18 +78,30 @@ export function Header() {
       if (ent && ent.status === "active") notifs.push({ id: "approved", message: "Votre entreprise est agreee ARSP", type: "success", time: "Actif", link: "/digital-id", isDb: false });
     }
 
-    setNotifications(notifs);
+    // Filter out dismissed system notifications
+    const filteredNotifs = notifs.filter(n => {
+      if (n.isDb) return true;
+      return !dismissedNotifs.includes(n.id);
+    });
+    setNotifications(filteredNotifs);
   }
 
-  async function markAsRead(dbId: string) {
-    await supabase.from('notifications').update({ read: true }).eq('id', dbId);
+  async function markAsRead(dbId: string, notifId?: string) {
+    if (dbId) {
+      await supabase.from('notifications').update({ read: true }).eq('id', dbId);
+    }
+    if (notifId) {
+      const updated = [...dismissedNotifs, notifId];
+      setDismissedNotifs(updated);
+      localStorage.setItem('dismissedNotifications', JSON.stringify(updated));
+    }
     fetchNotifications();
   }
     
     
       
 
-  const unreadCount = notifications.length;
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
@@ -128,7 +143,7 @@ export function Header() {
                 {notifications.length === 0 ? (
                   <div className="p-6 text-center text-gray-400 text-sm">Aucune notification</div>
                 ) : notifications.map((n) => (
-                  <div key={n.id} onClick={() => { if (n.isDb) markAsRead(n.dbId); setNotifOpen(false); }} className="p-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 cursor-pointer">
+                  <div key={n.id} onClick={() => { markAsRead(n.dbId, n.id); setNotifOpen(false); }} className="p-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 cursor-pointer">
                     <div className="flex items-start gap-2">
                       <div className={"w-2 h-2 rounded-full mt-1.5 shrink-0 " + (n.type === "error" ? "bg-red-500" : n.type === "warning" ? "bg-amber-500" : n.type === "success" ? "bg-emerald-500" : "bg-blue-500")} />
                       <div>
